@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Salon — Management</title>
+
+  <!-- Fonts (local — works offline) -->
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      src: url('css/fonts/inter-variable.woff2') format('woff2');
+      font-weight: 100 900;
+      font-display: swap;
+    }
+  </style>
+
+  <!-- Design tokens + layout -->
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/app.css" />
+
+  <!-- Component styles -->
+  <link rel="stylesheet" href="css/components/button.css" />
+  <link rel="stylesheet" href="css/components/card.css" />
+  <link rel="stylesheet" href="css/components/form.css" />
+  <link rel="stylesheet" href="css/components/modal.css" />
+  <link rel="stylesheet" href="css/components/slideover.css" />
+  <link rel="stylesheet" href="css/components/table.css" />
+  <link rel="stylesheet" href="css/components/badge.css" />
+  <link rel="stylesheet" href="css/components/toast.css" />
+  <link rel="stylesheet" href="css/components/chart.css" />
+
+  <!-- Page styles -->
+  <link rel="stylesheet" href="css/pages/login.css" />
+  <link rel="stylesheet" href="css/pages/dashboard.css" />
+  <link rel="stylesheet" href="css/pages/billing.css" />
+  <link rel="stylesheet" href="css/pages/customers.css" />
+  <link rel="stylesheet" href="css/pages/staff.css" />
+  <link rel="stylesheet" href="css/pages/catalog.css" />
+  <link rel="stylesheet" href="css/pages/settings.css" />
+</head>
+<body>
+
+  <!-- ── Offline banner (shown/hidden by offline-banner.js) ───────── -->
+  <div id="offline-banner" class="offline-banner" hidden>
+    <span class="offline-banner__icon">⚠</span>
+    You are offline — changes will sync when connection is restored.
+  </div>
+
+  <!-- ── App shell: sidebar + main ───────────────────────────────── -->
+  <div id="app-shell" class="app-shell">
+
+    <!-- Sidebar (rendered by sidebar.js) -->
+    <aside id="sidebar" class="sidebar" aria-label="Main navigation"></aside>
+
+    <!-- Main column: header + page content -->
+    <div id="main-wrapper" class="main-wrapper">
+      <header id="top-header" class="top-header" role="banner"></header>
+      <main  id="page-content" class="page-content" role="main"></main>
+    </div>
+
+  </div>
+
+  <!-- ── Overlays (managed by modal.js / slideover.js) ─────────── -->
+  <div id="modal-overlay"   class="modal-overlay"   hidden></div>
+  <div id="slideover-panel" class="slideover-panel" hidden aria-modal="true" role="dialog"></div>
+
+  <!-- ── Toast container (managed by toast.js) ─────────────────── -->
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+  <!-- ── Libraries (local vendor — works fully offline) ────────── -->
+  <script src="vendor/dexie.min.js"></script>
+  <script src="vendor/chart.min.js"></script>
+  <script src="vendor/lucide.min.js"></script>
+
+  <!-- ── App entry (ES module) ─────────────────────────────────── -->
+  <script type="module" src="js/app.js"></script>
+
+</body>
+</html>

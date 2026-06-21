@@ -1,0 +1,69 @@
+/* ── Slide-over panel (from right edge) ─────────────────────── */
+.slideover-panel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 45%;
+  min-width: 380px;
+  max-width: 680px;
+  background: var(--clr-surface);
+  box-shadow: var(--shadow-xl);
+  z-index: var(--z-slideover);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform var(--transition-slow);
+}
+.slideover-panel.open { transform: translateX(0); }
+
+/* Backdrop */
+.slideover-backdrop {
+  position: fixed;
+  inset: 0;
+  background: hsla(240, 12%, 10%, 0.4);
+  backdrop-filter: blur(1px);
+  z-index: calc(var(--z-slideover) - 1);
+  animation: overlay-in var(--transition-base) ease;
+}
+
+.slideover__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-5) var(--sp-6);
+  border-bottom: 1px solid var(--clr-border);
+  flex-shrink: 0;
+}
+.slideover__title {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--clr-text-primary);
+}
+.slideover__close {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--clr-text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.slideover__close:hover { background: var(--clr-surface-2); color: var(--clr-text-primary); }
+.slideover__close svg { width: 16px; height: 16px; stroke: currentColor; }
+
+.slideover__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-6);
+}
+
+.slideover__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-6);
+  border-top: 1px solid var(--clr-border);
+  flex-shrink: 0;
+  background: var(--clr-bg);
+}

@@ -1,0 +1,191 @@
+/* ── Owner Dashboard ────────────────────────────────────────── */
+
+.dashboard-page { display: flex; flex-direction: column; gap: var(--sp-6); }
+
+/* Page header row */
+.dashboard-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}
+.dashboard-page__greeting {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--clr-text-primary);
+}
+.dashboard-page__date {
+  font-size: var(--text-sm);
+  color: var(--clr-text-muted);
+  margin-top: 2px;
+}
+
+/* Date range filter */
+.dashboard-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--sp-1);
+}
+.dashboard-filter__btn {
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--clr-text-muted);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.dashboard-filter__btn:hover   { color: var(--clr-text-primary); }
+.dashboard-filter__btn.active  {
+  background: var(--clr-primary);
+  color: #fff;
+}
+
+/* KPI strip (5 cards) */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--sp-4);
+}
+@media (max-width: 1400px) { .kpi-strip { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px)  { .kpi-strip { grid-template-columns: repeat(2, 1fr); } }
+
+/* Main 2-column widget row */
+.dashboard-widgets {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: var(--sp-4);
+  align-items: start;
+}
+@media (max-width: 1200px) { .dashboard-widgets { grid-template-columns: 1fr; } }
+
+/* Bottom row: 3 widgets */
+.dashboard-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--sp-4);
+  align-items: start;
+}
+@media (max-width: 1200px) { .dashboard-bottom { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 800px)  { .dashboard-bottom { grid-template-columns: 1fr; } }
+
+/* Revenue trend chart container */
+.revenue-trend { }
+.revenue-trend__note {
+  font-size: var(--text-xs);
+  color: var(--clr-text-muted);
+  margin-top: var(--sp-2);
+}
+
+/* Staff leaderboard mini-table */
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--clr-border);
+  gap: var(--sp-4);
+}
+.leaderboard-row:last-child { border-bottom: none; }
+.leaderboard-row__rank {
+  width: 24px; height: 24px;
+  background: var(--clr-primary-light);
+  color: var(--clr-primary);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.leaderboard-row__name {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--clr-text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.leaderboard-row__amount {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--clr-text-primary);
+  flex-shrink: 0;
+}
+
+/* Upcoming birthdays widget */
+.birthday-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--clr-border);
+}
+.birthday-row:last-child { border-bottom: none; }
+.birthday-avatar {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-full);
+  background: hsl(340, 80%, 94%);
+  color: hsl(340, 80%, 45%);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  display: flex; align-items: center; justify-content: center;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.birthday-row__info { flex: 1; min-width: 0; }
+.birthday-row__name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--clr-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.birthday-row__date { font-size: var(--text-xs); color: var(--clr-text-muted); }
+.birthday-row__phone {
+  font-size: var(--text-xs);
+  color: var(--clr-primary);
+  font-weight: var(--font-medium);
+  flex-shrink: 0;
+}
+
+/* Top services list */
+.top-service-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+}
+.top-service-row__bar-wrapper {
+  flex: 1;
+  height: 6px;
+  background: var(--clr-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.top-service-row__bar {
+  height: 100%;
+  background: var(--clr-primary);
+  border-radius: var(--radius-full);
+  transition: width 0.6s ease;
+}
+.top-service-row__name {
+  font-size: var(--text-sm);
+  color: var(--clr-text-primary);
+  min-width: 100px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.top-service-row__value {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--clr-text-primary);
+  text-align: right;
+  min-width: 60px;
+}

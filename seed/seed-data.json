@@ -1,0 +1,265 @@
+{
+  "salon_settings": {
+    "salon_id": "salon-001",
+    "name": "Demo Salon",
+    "address": "123 Market Road, Andheri West, Mumbai 400058",
+    "phone": "9999999999",
+    "gst_enabled": false,
+    "gstin": null
+  },
+  "users": [
+    {
+      "user_id": "user-owner-1",
+      "username": "owner",
+      "password_hash": "demo_hash_owner",
+      "name": "Kavya Sharma",
+      "role": "OWNER",
+      "status": "ACTIVE"
+    },
+    {
+      "user_id": "user-billing-1",
+      "username": "billing",
+      "password_hash": "demo_hash_billing",
+      "name": "Priya Nair",
+      "role": "BILLING_PERSON",
+      "status": "ACTIVE"
+    },
+    {
+      "user_id": "user-staff-1",
+      "username": "anita",
+      "password_hash": "demo_hash_anita",
+      "name": "Anita",
+      "role": "STAFF",
+      "status": "ACTIVE"
+    }
+  ],
+  "services": [
+    {
+      "service_id": "svc-hair-01",
+      "name": "Haircut",
+      "category": "Hair",
+      "price": 250.00,
+      "duration_minutes": 30,
+      "status": "ACTIVE"
+    },
+    {
+      "service_id": "svc-skin-01",
+      "name": "Facial",
+      "category": "Skin",
+      "price": 600.00,
+      "duration_minutes": 45,
+      "status": "ACTIVE"
+    },
+    {
+      "service_id": "svc-nails-01",
+      "name": "Manicure",
+      "category": "Nails",
+      "price": 350.00,
+      "duration_minutes": 30,
+      "status": "ACTIVE"
+    },
+    {
+      "service_id": "svc-hair-02",
+      "name": "Hair Colour",
+      "category": "Hair",
+      "price": 1200.00,
+      "duration_minutes": 90,
+      "status": "ACTIVE"
+    }
+  ],
+  "staff": [
+    {
+      "staff_id": "staff-1",
+      "name": "Anita",
+      "phone": "9012345678",
+      "designation": "Stylist",
+      "status": "ACTIVE",
+      "sync_status": "SYNCED"
+    },
+    {
+      "staff_id": "staff-2",
+      "name": "Rohit",
+      "phone": "9123456789",
+      "designation": "Stylist",
+      "status": "ACTIVE",
+      "sync_status": "SYNCED"
+    }
+  ],
+  "commission_rate_history": [
+    {
+      "id": "cr-1",
+      "staff_id": "staff-1",
+      "commission_pct": 8.0,
+      "effective_from": "2026-01-01",
+      "effective_to": "2026-04-30"
+    },
+    {
+      "id": "cr-2",
+      "staff_id": "staff-1",
+      "commission_pct": 10.0,
+      "effective_from": "2026-05-01",
+      "effective_to": null
+    },
+    {
+      "id": "cr-3",
+      "staff_id": "staff-2",
+      "commission_pct": 12.5,
+      "effective_from": "2026-01-01",
+      "effective_to": null
+    }
+  ],
+  "predefined_discount_offers": [
+    {
+      "offer_id": "offer-1",
+      "name": "Monsoon Special 10%",
+      "discount_type": "PERCENTAGE",
+      "discount_value": 10.0,
+      "status": "ACTIVE"
+    },
+    {
+      "offer_id": "offer-2",
+      "name": "Flat ₹200 Off",
+      "discount_type": "FLAT",
+      "discount_value": 200.0,
+      "status": "ACTIVE"
+    }
+  ],
+  "customers": [
+    {
+      "customer_id": "cust-1",
+      "name": "Ria Sharma",
+      "phone": "9800000001",
+      "gender": "Female",
+      "date_of_birth": "1994-03-25",
+      "referral_source": "Walk-in",
+      "notes": "",
+      "status": "ACTIVE",
+      "sync_status": "SYNCED"
+    },
+    {
+      "customer_id": "cust-2",
+      "name": "Amit Kumar",
+      "phone": "9800000002",
+      "gender": "Male",
+      "date_of_birth": "1988-11-09",
+      "referral_source": "Friend Referral",
+      "notes": "",
+      "status": "ACTIVE",
+      "sync_status": "SYNCED"
+    },
+    {
+      "customer_id": "cust-3",
+      "name": "Sunita Mehta",
+      "phone": "9800000003",
+      "gender": "Female",
+      "date_of_birth": "1990-06-15",
+      "referral_source": "Instagram",
+      "notes": "Prefers Anita for haircuts",
+      "status": "ACTIVE",
+      "sync_status": "SYNCED",
+      "_note": "Last visit was 2026-04-25 — >45 days ago; triggers lapsed customer report"
+    }
+  ],
+  "invoices": [
+    {
+      "invoice_id": "inv-1",
+      "invoice_number": "LOCAL-1-1716192000",
+      "customer_id": "cust-1",
+      "created_by": "user-billing-1",
+      "payment_method": "CASH",
+      "subtotal": 250.00,
+      "discount_type": null,
+      "discount_value": 0,
+      "discount_amount": 0,
+      "discount_offer_snap": null,
+      "taxable_amount": 250.00,
+      "cgst_amount": 0,
+      "sgst_amount": 0,
+      "grand_total": 250.00,
+      "gst_enabled": false,
+      "gstin_snap": null,
+      "status": "PAID",
+      "sync_status": "SYNCED",
+      "created_at": "2026-05-20T10:15:00Z",
+      "line_items": [
+        {
+          "line_item_id": "li-1",
+          "service_id": "svc-hair-01",
+          "service_name_snap": "Haircut",
+          "unit_price_snap": 250.00,
+          "professional_id": "staff-1",
+          "professional_name_snap": "Anita",
+          "commission_pct_snap": 10.0,
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "invoice_id": "inv-2",
+      "invoice_number": "LOCAL-1-1716278400",
+      "customer_id": "cust-2",
+      "created_by": "user-billing-1",
+      "payment_method": "UPI",
+      "subtotal": 600.00,
+      "discount_type": "PERCENTAGE",
+      "discount_value": 10.0,
+      "discount_amount": 60.00,
+      "discount_offer_snap": "Monsoon Special 10%",
+      "taxable_amount": 540.00,
+      "cgst_amount": 0,
+      "sgst_amount": 0,
+      "grand_total": 540.00,
+      "gst_enabled": false,
+      "gstin_snap": null,
+      "status": "PAID",
+      "sync_status": "SYNCED",
+      "created_at": "2026-05-21T14:30:00Z",
+      "line_items": [
+        {
+          "line_item_id": "li-2",
+          "service_id": "svc-skin-01",
+          "service_name_snap": "Facial",
+          "unit_price_snap": 600.00,
+          "professional_id": "staff-2",
+          "professional_name_snap": "Rohit",
+          "commission_pct_snap": 12.5,
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "invoice_id": "inv-3",
+      "invoice_number": "LOCAL-1-1745539200",
+      "customer_id": "cust-3",
+      "created_by": "user-billing-1",
+      "payment_method": "CARD",
+      "subtotal": 1200.00,
+      "discount_type": "FLAT",
+      "discount_value": 200.00,
+      "discount_amount": 200.00,
+      "discount_offer_snap": "Flat ₹200 Off",
+      "taxable_amount": 1000.00,
+      "cgst_amount": 0,
+      "sgst_amount": 0,
+      "grand_total": 1000.00,
+      "gst_enabled": false,
+      "gstin_snap": null,
+      "status": "PAID",
+      "sync_status": "SYNCED",
+      "created_at": "2026-04-25T11:00:00Z",
+      "_note": "This is Sunita's last visit — 2026-04-25 is >45 days before 2026-06-17; she should appear in lapsed report"
+    }
+  ],
+  "refunds": [
+    {
+      "refund_id": "ref-1",
+      "invoice_id": "inv-2",
+      "refund_number": "REF-202605-0001",
+      "type": "PARTIAL",
+      "amount": 100.00,
+      "reason": "Service not as expected",
+      "created_at": "2026-05-22T09:00:00Z",
+      "_note": "Partial refund on inv-2; invoice status should be PARTIALLY_REFUNDED"
+    }
+  ]
+}

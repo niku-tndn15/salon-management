@@ -1,0 +1,1325 @@
+openapi: 3.0.3
+info:
+  title: Salon Application API
+  version: 1.0.0
+  description: >
+    API contract for Salon Application V1 backend.
+    Source of truth: docs/implementation_plan_backend.md.
+
+
+    All /api/* endpoints except /api/auth/login require Bearer JWT.
+
+
+    All responses use this envelope:
+      Success — { "success": true, "data": <payload>, "meta": { ... } }
+      Error   — { "success": false, "error": { "code": "...", "message": "...", "details": [...] } }
+
+
+    Error codes: VALIDATION_ERROR (400) | UNAUTHORIZED (401) | FORBIDDEN (403) |
+    NOT_FOUND (404) | CONFLICT (409) | INTERNAL_ERROR (500)
+
+servers:
+  - url: http://localhost:3000
+    description: Local dev
+  - url: https://api.example.com
+    description: Production (placeholder)
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    # ─── Shared ───────────────────────────────────────────────────────────────
+    ApiError:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error:
+          type: object
+          properties:
+            code:    { type: string, example: VALIDATION_ERROR }
+            message: { type: string }
+            details: { type: array, items: { type: object } }
+
+    # ─── Salon ────────────────────────────────────────────────────────────────
+    SalonProfile:
+      type: object
+      required: [name, address, phone]
+      properties:
+        id:          { type: string, format: uuid, readOnly: true }
+        name:        { type: string }
+        address:     { type: string }
+        phone:       { type: string }
+        gst_enabled: { type: boolean, default: false }
+        gstin:       { type: string, maxLength: 15, nullable: true }
+        updated_at:  { type: string, format: date-time, readOnly: true }
+
+    # ─── Users ────────────────────────────────────────────────────────────────
+    User:
+      type: object
+      required: [username, full_name, role]
+      properties:
+        user_id:               { type: string, format: uuid, readOnly: true }
+        username:              { type: string, maxLength: 50 }
+        full_name:             { type: string }
+        role:                  { type: string, enum: [OWNER, BILLING_PERSON, STAFF] }
+        status:                { type: string, enum: [ACTIVE, INACTIVE] }
+        force_password_change: { type: boolean, readOnly: true }
+
+    # ─── Catalog ──────────────────────────────────────────────────────────────
+    ServiceCategory:
+      type: object
+      required: [name]
+      properties:
+        id:   { type: string, format: uuid, readOnly: true }
+        name: { type: string, maxLength: 50 }
+
+    Service:
+      type: object
+      required: [name, price, category_id]
+      properties:
+        service_id:       { type: string, format: uuid, readOnly: true }
+        name:             { type: string, maxLength: 100 }
+        category_id:      { type: string, format: uuid }
+        category_name:    { type: string, readOnly: true, description: "Joined from service_categories" }
+        price:            { type: number, minimum: 0 }
+        duration_minutes: { type: integer, default: 30, minimum: 1 }
+        description:      { type: string, nullable: true }
+        status:           { type: string, enum: [active, inactive] }
+
+    # ─── Staff ────────────────────────────────────────────────────────────────
+    Staff:
+      type: object
+      required: [name, phone, designation, join_date]
+      properties:
+        staff_id:       { type: string, format: uuid, readOnly: true }
+        user_id:        { type: string, format: uuid, nullable: true, readOnly: true }
+        name:           { type: string, maxLength: 100 }
+        phone:          { type: string, maxLength: 10 }
+        designation:    { type: string, maxLength: 100 }
+        commission_pct: { type: number, minimum: 0, maximum: 100 }
+        join_date:      { type: string, format: date }
+        status:         { type: string, enum: [ACTIVE, INACTIVE] }
+
+    CommissionRate:
+      type: object
+      properties:
+        id:             { type: string, format: uuid, readOnly: true }
+        staff_id:       { type: string, format: uuid, readOnly: true }
+        commission_pct: { type: number, minimum: 0, maximum: 100 }
+        effective_from: { type: string, format: date }
+        effective_to:   { type: string, format: date, nullable: true }
+        changed_by:     { type: string, format: uuid, readOnly: true }
+
+    # ─── Customers ────────────────────────────────────────────────────────────
+    Customer:
+      type: object
+      required: [name, phone, gender, date_of_birth, referral_source]
+      properties:
+        customer_id:          { type: string, format: uuid, readOnly: true }
+        name:                 { type: string, maxLength: 100 }
+        phone:                { type: string, maxLength: 10, description: "10-digit; primary identifier" }
+        gender:               { type: string, enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY] }
+        date_of_birth:        { type: string, format: date }
+        referral_source:      { type: string, enum: [WALK_IN, FRIEND_REFERRAL, INSTAGRAM, GOOGLE, FACEBOOK, OTHER] }
+        notes:                { type: string, nullable: true }
+        status:               { type: string, enum: [ACTIVE, MERGED, DELETED], readOnly: true }
+        # Computed fields — present on GET /customers/:id and GET /customers list
+        total_visits:         { type: integer, readOnly: true }
+        lifetime_spend:       { type: number, readOnly: true }
+        last_visit_date:      { type: string, format: date, nullable: true, readOnly: true }
+        days_since_last_visit:{ type: integer, nullable: true, readOnly: true }
+        average_spend:        { type: number, nullable: true, readOnly: true }
+        is_lapsed:            { type: boolean, readOnly: true }
+        created_at:           { type: string, format: date-time, readOnly: true }
+
+    # ─── Invoices ─────────────────────────────────────────────────────────────
+    InvoiceLineItem:
+      type: object
+      required: [service_name_snap, unit_price_snap, professional_id, professional_name_snap]
+      properties:
+        line_item_id:           { type: string, format: uuid, readOnly: true }
+        service_id:             { type: string, format: uuid, nullable: true }
+        service_name_snap:      { type: string }
+        unit_price_snap:        { type: number, minimum: 0 }
+        is_price_override:      { type: boolean, default: false }
+        quantity:               { type: integer, default: 1, minimum: 1 }
+        professional_id:        { type: string, format: uuid }
+        professional_name_snap: { type: string }
+        commission_pct_snap:    { type: number, nullable: true, readOnly: true }
+
+    Invoice:
+      type: object
+      required: [customer_id, payment_method, line_items]
+      properties:
+        invoice_id:          { type: string, format: uuid, readOnly: true }
+        invoice_number:      { type: string, readOnly: true, description: "SAL-YYYYMM-NNNN; assigned by server" }
+        customer_id:         { type: string, format: uuid }
+        created_by:          { type: string, format: uuid, readOnly: true }
+        invoice_date:        { type: string, format: date, readOnly: true }
+        payment_method:      { type: string, enum: [CASH, UPI, CARD] }
+        # All monetary fields are server-calculated; client values are ignored
+        subtotal:            { type: number, readOnly: true }
+        discount_type:       { type: string, enum: [NONE, PERCENTAGE, FLAT], default: NONE }
+        discount_value:      { type: number, default: 0, minimum: 0 }
+        discount_amount:     { type: number, readOnly: true }
+        discount_offer_id:   { type: string, format: uuid, nullable: true }
+        discount_offer_snap: { type: string, nullable: true, readOnly: true }
+        taxable_amount:      { type: number, readOnly: true }
+        gst_enabled:         { type: boolean, readOnly: true }
+        gstin_snap:          { type: string, nullable: true, readOnly: true }
+        cgst_amount:         { type: number, readOnly: true }
+        sgst_amount:         { type: number, readOnly: true }
+        grand_total:         { type: number, readOnly: true }
+        status:              { type: string, enum: [PAID, REFUNDED, PARTIALLY_REFUNDED], readOnly: true }
+        # Salon info snapshotted at billing time
+        salon_name_snap:     { type: string, readOnly: true }
+        salon_address_snap:  { type: string, readOnly: true }
+        salon_phone_snap:    { type: string, readOnly: true }
+        line_items:
+          type: array
+          items: { $ref: '#/components/schemas/InvoiceLineItem' }
+        created_at:          { type: string, format: date-time, readOnly: true }
+
+    Refund:
+      type: object
+      required: [refund_type, refund_amount, reason]
+      properties:
+        refund_id:     { type: string, format: uuid, readOnly: true }
+        invoice_id:    { type: string, format: uuid, readOnly: true }
+        refund_number: { type: string, readOnly: true }
+        refund_type:   { type: string, enum: [FULL, PARTIAL] }
+        refund_amount: { type: number, minimum: 0 }
+        reason:        { type: string }
+        processed_by:  { type: string, format: uuid, readOnly: true }
+        processed_at:  { type: string, format: date-time, readOnly: true }
+
+    PredefinedDiscountOffer:
+      type: object
+      required: [name, discount_type, discount_value]
+      properties:
+        offer_id:       { type: string, format: uuid, readOnly: true }
+        name:           { type: string, maxLength: 100 }
+        discount_type:  { type: string, enum: [PERCENTAGE, FLAT] }
+        discount_value: { type: number, minimum: 0 }
+        status:         { type: string, enum: [ACTIVE, INACTIVE] }
+
+    # ─── Dashboard ────────────────────────────────────────────────────────────
+    DashboardKPIs:
+      type: object
+      properties:
+        revenue:
+          type: object
+          properties:
+            value:         { type: number }
+            wow_pct:       { type: number, nullable: true, description: "null if prior week was ₹0" }
+            wow_direction: { type: string, enum: [up, down, flat], nullable: true }
+        customers_served:
+          type: object
+          properties:
+            total:      { type: integer }
+            new:        { type: integer }
+            returning:  { type: integer }
+            wow_change: { type: integer }
+        average_ticket_value:
+          type: object
+          properties:
+            value:    { type: number, nullable: true }
+            wow_pct:  { type: number, nullable: true }
+        lapsed_customers:
+          type: object
+          properties:
+            count:      { type: integer }
+            wow_change: { type: integer }
+        top_performer:
+          type: object
+          nullable: true
+          properties:
+            staff_id:      { type: string, format: uuid }
+            name:          { type: string }
+            revenue:       { type: number }
+            service_count: { type: integer }
+
+    RevenueTrendPoint:
+      type: object
+      properties:
+        date:    { type: string, format: date }
+        revenue: { type: number }
+
+    CategorySplit:
+      type: object
+      properties:
+        category: { type: string }
+        revenue:  { type: number }
+        pct:      { type: number, description: "Percentage of total; 0 when no revenue" }
+
+    StaffLeaderboardEntry:
+      type: object
+      properties:
+        staff_id:      { type: string, format: uuid }
+        name:          { type: string }
+        revenue:       { type: number }
+        service_count: { type: integer }
+
+    BirthdayEntry:
+      type: object
+      properties:
+        customer_id:        { type: string, format: uuid }
+        name:               { type: string }
+        phone:              { type: string }
+        date_of_birth:      { type: string, format: date }
+        birthday_this_year: { type: string, format: date }
+
+    # ─── Staff Performance ────────────────────────────────────────────────────
+    StaffPerformance:
+      type: object
+      properties:
+        staff_id:   { type: string, format: uuid }
+        staff_name: { type: string }
+        summary:
+          type: object
+          properties:
+            total_services:       { type: integer }
+            total_revenue:        { type: number }
+            commission_earned:    { type: number }
+            avg_services_per_day: { type: number }
+        by_rate_period:
+          type: array
+          items:
+            type: object
+            properties:
+              rate:       { type: number }
+              from:       { type: string, format: date }
+              to:         { type: string, format: date, nullable: true }
+              services:   { type: integer }
+              revenue:    { type: number }
+              commission: { type: number }
+        line_items:
+          type: array
+          items:
+            type: object
+            properties:
+              invoice_id:        { type: string, format: uuid }
+              invoice_date:      { type: string, format: date }
+              service_name:      { type: string }
+              unit_price:        { type: number }
+              commission_pct:    { type: number }
+              commission_earned: { type: number }
+
+    # ─── Sync ─────────────────────────────────────────────────────────────────
+    SyncPushRequest:
+      type: object
+      required: [device_id, records]
+      properties:
+        device_id: { type: string }
+        records:
+          type: array
+          items:
+            type: object
+            required: [entity_type, operation, local_id, payload]
+            properties:
+              entity_type: { type: string, enum: [customer, invoice, refund] }
+              operation:   { type: string, enum: [CREATE, UPDATE] }
+              local_id:    { type: string }
+              payload:     { type: object }
+
+    SyncPushResult:
+      type: object
+      properties:
+        processed: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              local_id:         { type: string }
+              server_id:        { type: string, format: uuid }
+              canonical_number: { type: string, description: "SAL-YYYYMM-NNNN for invoices" }
+              status:           { type: string, enum: [PROCESSED, CONFLICT] }
+              conflict_reason:  { type: string, nullable: true }
+
+    SyncPullResult:
+      type: object
+      properties:
+        customers:           { type: array, items: { $ref: '#/components/schemas/Customer' } }
+        services:            { type: array, items: { $ref: '#/components/schemas/Service' } }
+        staff:               { type: array, items: { $ref: '#/components/schemas/Staff' } }
+        invoices:            { type: array, items: { $ref: '#/components/schemas/Invoice' } }
+        last_sync_timestamp: { type: string, format: date-time }
+
+# ─── Paths ────────────────────────────────────────────────────────────────────
+paths:
+
+  # ── Health ────────────────────────────────────────────────────────────────────
+  /api/health:
+    get:
+      summary: Server and DB health check
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  db:     { type: string, example: connected }
+
+  # ── Auth ──────────────────────────────────────────────────────────────────────
+  /api/auth/login:
+    post:
+      summary: Authenticate and receive JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: JWT token and user info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      token:               { type: string }
+                      user:                { $ref: '#/components/schemas/User' }
+                      forcePasswordChange: { type: boolean }
+        '401': { description: Invalid credentials }
+        '423': { description: Account locked (5 failed attempts; retry after locked_until) }
+
+  /api/auth/logout:
+    post:
+      summary: Invalidate current session (client must clear stored token)
+      responses:
+        '204': { description: Logged out }
+
+  /api/auth/me:
+    get:
+      summary: Get current authenticated user info
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/User' }
+        '401': { description: Unauthorized }
+
+  /api/auth/change-password:
+    post:
+      summary: Change own password (all roles); newPassword min 8 chars, 1 upper, 1 lower, 1 digit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword:     { type: string, minLength: 8 }
+      responses:
+        '204': { description: Password changed }
+        '400': { description: Weak password or same as current }
+        '401': { description: Current password incorrect }
+
+  # ── Service Catalog ───────────────────────────────────────────────────────────
+  /api/catalog/categories:
+    get:
+      summary: List all service categories (all roles)
+      responses:
+        '200':
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/ServiceCategory' } }
+    post:
+      summary: Create service category (Owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServiceCategory' }
+      responses:
+        '201': { description: Created }
+        '409': { description: Category name already exists }
+
+  /api/catalog/services:
+    get:
+      summary: List services; BILLING_PERSON always receives active-only regardless of query param
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, inactive, all] }
+          description: "OWNER default: all; BILLING_PERSON: always active"
+        - in: query
+          name: category_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200':
+          description: Services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/Service' } }
+                  meta:
+                    type: object
+                    properties:
+                      page:  { type: integer }
+                      total: { type: integer }
+    post:
+      summary: Create service (Owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Service' }
+      responses:
+        '201': { description: Created }
+        '409': { description: Service name already exists (case-insensitive check) }
+
+  /api/catalog/services/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Update service (Owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Service' }
+      responses:
+        '200': { description: Updated }
+    patch:
+      summary: Toggle service status active/inactive (Owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [active, inactive] }
+      responses:
+        '200': { description: Status updated }
+    delete:
+      summary: Hard delete service (Owner only; blocked if invoice history exists)
+      responses:
+        '204': { description: Deleted }
+        '400': { description: Has invoice history — deactivate instead }
+
+  # ── Customers ─────────────────────────────────────────────────────────────────
+  /api/customers:
+    get:
+      summary: Search/list customers with computed visit stats
+      parameters:
+        - in: query
+          name: phone
+          schema: { type: string }
+        - in: query
+          name: name
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Customer list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/Customer' } }
+                  meta:
+                    type: object
+                    properties:
+                      page:  { type: integer }
+                      total: { type: integer }
+    post:
+      summary: Create customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Customer' }
+      responses:
+        '201': { description: Created }
+        '409': { description: Phone number already used by an active customer }
+
+  /api/customers/reports/lapsed:
+    get:
+      summary: Customers with no visit in the last N days (Owner only)
+      parameters:
+        - in: query
+          name: threshold_days
+          schema: { type: integer, default: 45 }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200':
+          description: Lapsed customers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        customer_id:    { type: string, format: uuid }
+                        name:           { type: string }
+                        phone:          { type: string }
+                        last_visit_date:{ type: string, format: date }
+                        days_inactive:  { type: integer }
+                        total_visits:   { type: integer }
+                        lifetime_spend: { type: number }
+
+  /api/customers/reports/birthdays:
+    get:
+      summary: Customers with birthday in next 7 days (Owner + Billing; filter-independent)
+      responses:
+        '200':
+          description: Upcoming birthdays
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/BirthdayEntry' } }
+
+  /api/customers/merge:
+    post:
+      summary: Merge two customer profiles (Owner only); re-links all invoices to primary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [primary_id, secondary_id]
+              properties:
+                primary_id:   { type: string, format: uuid }
+                secondary_id: { type: string, format: uuid }
+      responses:
+        '200': { description: Merged; secondary customer status set to MERGED }
+        '400': { description: primary_id and secondary_id are the same }
+        '404': { description: One or both customer IDs not found }
+
+  /api/customers/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get customer profile with computed visit stats
+      responses:
+        '200':
+          description: Customer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/Customer' }
+        '404': { description: Not found }
+    put:
+      summary: Update customer (name, gender, dob, referral, notes — phone is immutable)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Customer' }
+      responses:
+        '200': { description: Updated }
+
+  /api/customers/{id}/visits:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Visit history for a customer (invoices ordered by date desc)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Invoices for customer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/Invoice' } }
+                  meta:
+                    type: object
+                    properties:
+                      page:  { type: integer }
+                      total: { type: integer }
+
+  # ── Invoices ──────────────────────────────────────────────────────────────────
+  /api/invoices:
+    get:
+      summary: List invoices with optional filters
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+          description: Customer name or phone substring
+        - in: query
+          name: start_date
+          schema: { type: string, format: date }
+        - in: query
+          name: end_date
+          schema: { type: string, format: date }
+        - in: query
+          name: status
+          schema: { type: string, enum: [PAID, REFUNDED, PARTIALLY_REFUNDED] }
+        - in: query
+          name: payment_method
+          schema: { type: string, enum: [CASH, UPI, CARD] }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/Invoice' } }
+                  meta:
+                    type: object
+                    properties:
+                      page:  { type: integer }
+                      total: { type: integer }
+    post:
+      summary: Create invoice (server recalculates all monetary totals; client totals ignored)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Invoice' }
+      responses:
+        '201':
+          description: Invoice created with server-assigned invoice_number and verified totals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/Invoice' }
+        '400': { description: Validation error }
+
+  /api/invoices/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get invoice detail with line items
+      responses:
+        '200':
+          description: Invoice
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/Invoice' }
+        '404': { description: Not found }
+
+  /api/invoices/{id}/refund:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Initiate full or partial refund; invoice must be in PAID status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refund_type, refund_amount, reason]
+              properties:
+                refund_type:   { type: string, enum: [FULL, PARTIAL] }
+                refund_amount: { type: number, minimum: 0 }
+                reason:        { type: string }
+      responses:
+        '201':
+          description: Refund created; invoice status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/Refund' }
+        '400': { description: Invoice not in PAID status, or refund_amount invalid }
+
+  # ── Staff ─────────────────────────────────────────────────────────────────────
+  /api/staff:
+    get:
+      summary: List all staff (Owner only)
+      responses:
+        '200':
+          description: Staff list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/Staff' } }
+    post:
+      summary: Create staff member (Owner only); auto-generates linked user account
+      description: >
+        Generates username (firstname + last4 of phone) and temporary password.
+        Returns credentials in response body — plaintext, one-time only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Staff' }
+      responses:
+        '201':
+          description: Staff created with generated login credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      staff:
+                        $ref: '#/components/schemas/Staff'
+                      credentials:
+                        type: object
+                        properties:
+                          username:          { type: string }
+                          temporaryPassword: { type: string }
+        '409': { description: Phone number already in use }
+
+  /api/staff/compare:
+    get:
+      summary: Comparative performance summary for all staff (Owner only)
+      parameters:
+        - in: query
+          name: start_date
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: end_date
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: All-staff performance comparison
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/StaffLeaderboardEntry' } }
+
+  /api/staff/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get staff profile; STAFF role may only access own record
+      responses:
+        '200':
+          description: Staff member
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/Staff' }
+        '403': { description: STAFF role accessing another staff record }
+        '404': { description: Not found }
+    put:
+      summary: Update staff profile (Owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Staff' }
+      responses:
+        '200': { description: Updated }
+
+  /api/staff/{id}/status:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Activate or deactivate staff member (Owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:              { type: string, enum: [ACTIVE, INACTIVE] }
+                deactivation_reason: { type: string }
+      responses:
+        '200': { description: Status updated }
+
+  /api/staff/{id}/commission-history:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Commission rate history for a staff member (Owner only)
+      responses:
+        '200':
+          description: Rate history ordered by effective_from desc
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/CommissionRate' } }
+
+  /api/staff/{id}/commission:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Set new commission rate (Owner only); effective from next calendar day
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [commission_pct]
+              properties:
+                commission_pct: { type: number, minimum: 0, maximum: 100 }
+      responses:
+        '201': { description: New rate created; previous rate closed out }
+
+  /api/staff/{id}/performance:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Performance report for date range; STAFF role may only access own record
+      parameters:
+        - in: query
+          name: start_date
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: end_date
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Performance data with commission breakdown by rate period
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/StaffPerformance' }
+
+  # ── Dashboard ─────────────────────────────────────────────────────────────────
+  /api/dashboard/kpis:
+    get:
+      summary: All 5 KPI cards for a date range (Owner only)
+      parameters:
+        - in: query
+          name: start_date
+          schema: { type: string, format: date }
+        - in: query
+          name: end_date
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: KPI data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/DashboardKPIs' }
+
+  /api/dashboard/revenue-trend:
+    get:
+      summary: Daily revenue for rolling last 30 days (Owner only; ignores date filter; no gaps)
+      responses:
+        '200':
+          description: 30-point revenue series
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/RevenueTrendPoint' } }
+
+  /api/dashboard/category-split:
+    get:
+      summary: Revenue by service category for a date range (Owner only)
+      parameters:
+        - in: query
+          name: start_date
+          schema: { type: string, format: date }
+        - in: query
+          name: end_date
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Revenue breakdown by category
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/CategorySplit' } }
+
+  /api/dashboard/top-services:
+    get:
+      summary: Top 5 services by revenue for a date range (Owner only)
+      parameters:
+        - in: query
+          name: start_date
+          schema: { type: string, format: date }
+        - in: query
+          name: end_date
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Top services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        service_name: { type: string }
+                        revenue:      { type: number }
+                        count:        { type: integer }
+
+  /api/dashboard/staff-leaderboard:
+    get:
+      summary: All staff ranked by revenue for a date range (Owner only)
+      parameters:
+        - in: query
+          name: start_date
+          schema: { type: string, format: date }
+        - in: query
+          name: end_date
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Staff leaderboard
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/StaffLeaderboardEntry' } }
+
+  /api/dashboard/birthdays:
+    get:
+      summary: Customers with birthday in next 7 days (Owner only; filter-independent)
+      responses:
+        '200':
+          description: Upcoming birthdays
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/BirthdayEntry' } }
+
+  # ── Settings ──────────────────────────────────────────────────────────────────
+  /api/settings/salon:
+    get:
+      summary: Get salon profile (Owner only)
+      responses:
+        '200':
+          description: Salon profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/SalonProfile' }
+    put:
+      summary: Update salon profile and GST config (Owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalonProfile' }
+      responses:
+        '200': { description: Updated }
+        '400': { description: gst_enabled = true but gstin missing or invalid }
+
+  /api/settings/discounts:
+    get:
+      summary: List discount offers (Owner + Billing)
+      responses:
+        '200':
+          description: Discount offers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/PredefinedDiscountOffer' } }
+    post:
+      summary: Create discount offer (Owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PredefinedDiscountOffer' }
+      responses:
+        '201': { description: Created }
+        '409': { description: Active offer with this name already exists }
+
+  /api/settings/discounts/{id}/status:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Toggle offer status ACTIVE/INACTIVE (Owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [ACTIVE, INACTIVE] }
+      responses:
+        '200': { description: Status updated }
+
+  # ── Users (system user management) ───────────────────────────────────────────
+  /api/users:
+    get:
+      summary: List all system users (Owner only)
+      responses:
+        '200':
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/User' } }
+    post:
+      summary: Create system user (Owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/User'
+                - type: object
+                  required: [password]
+                  properties:
+                    password: { type: string, minLength: 8 }
+      responses:
+        '201': { description: Created }
+        '409': { description: Username already taken }
+
+  /api/users/{id}/status:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Activate or deactivate user (Owner only; cannot deactivate own account)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [ACTIVE, INACTIVE] }
+      responses:
+        '200': { description: Updated }
+        '400': { description: Cannot deactivate own account }
+
+  /api/users/{id}/reset-password:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Reset a user's password (Owner only); sets force_password_change = true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_password]
+              properties:
+                new_password: { type: string, minLength: 8 }
+      responses:
+        '200': { description: Password reset }
+
+  # ── Offline Sync ──────────────────────────────────────────────────────────────
+  /api/sync/push:
+    post:
+      summary: Push locally queued writes from IndexedDB to server (PENDING records)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SyncPushRequest' }
+      responses:
+        '200':
+          description: Push result with server-assigned IDs and any conflict flags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/SyncPushResult' }
+
+  /api/sync/pull:
+    get:
+      summary: Pull updates made on other devices since last sync timestamp
+      parameters:
+        - in: query
+          name: since
+          required: true
+          schema: { type: string, format: date-time }
+          description: ISO 8601 timestamp of last successful sync
+        - in: query
+          name: device_id
+          required: true
+          schema: { type: string }
+          description: Exclude records originating from this device
+      responses:
+        '200':
+          description: Changed records since last sync
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/SyncPullResult' }

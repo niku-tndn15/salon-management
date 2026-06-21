@@ -1,0 +1,23 @@
+# 📝 Salon Management Web App — Task List
+
+- [x] **Phase 1: Project Setup & Design System**
+    - [x] Initialize HTML5 + ES6 Module Project (Vanilla SPA)
+    - [x] Create global design system variables (`variables.css`)
+    - [x] Build the shell layout with collapsible sidebar and role selector
+- [x] **Phase 2: Database Setup & Seed Data**
+    - [x] Install Dexie.js and set up schema (via CDN)
+    - [x] Write DB seed script with dummy catalog, customers, and staff (30-day history seeded)
+- [x] **Phase 3: Customer Management & Service Catalog UIs**
+    - [x] Implement customer search, visit history, and profile creator
+    - [x] Build owner-only service catalog CRUD UI
+- [x] **Phase 4: Invoicing & Billing Workspace**
+    - [x] Develop service selection cart with professional tagging per line item
+    - [x] Implement manual/predefined discounts and GST split calculations
+    - [x] Add invoice generation modal with UPI/Cash/Card selector and WhatsApp link mockup
+    - [x] Build past invoice list and refund console
+- [x] **Phase 5: Dashboards & Performance Reports**
+    - [x] Build Owner Dashboard metrics (revenue, customer count, top services/staff)
+    - [x] Create Staff Portal with performance details and custom date-range commission reports
+- [x] **Phase 6: Auth & Settings Module**
+    - [x] Create role-simulation login screen (Implemented via interactive top-bar role selector & router RBAC controls)
+    - [x] Implement Settings panels (salon profile, GST/GSTIN settings, predefined discount CRUD, user management)

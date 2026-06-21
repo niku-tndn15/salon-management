@@ -1,0 +1,124 @@
+/* ── Staff Performance page ─────────────────────────────────── */
+
+.staff-page { display: flex; flex-direction: column; gap: var(--sp-5); }
+
+/* Staff grid (card list view) */
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-4);
+}
+
+.staff-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.staff-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.staff-card__avatar {
+  width: 48px; height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--clr-primary);
+  color: #fff;
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  display: flex; align-items: center; justify-content: center;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.staff-card__info { flex: 1; min-width: 0; }
+.staff-card__name {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--clr-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.staff-card__designation { font-size: var(--text-xs); color: var(--clr-text-muted); }
+.staff-card__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+}
+.staff-stat {
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--sp-3);
+}
+.staff-stat__label { font-size: var(--text-xs); color: var(--clr-text-muted); }
+.staff-stat__value { font-size: var(--text-lg); font-weight: var(--font-bold); color: var(--clr-text-primary); margin-top: 2px; }
+.staff-card__actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+/* Performance report layout */
+.performance-report { display: flex; flex-direction: column; gap: var(--sp-5); }
+.performance-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.performance-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-4);
+}
+@media (max-width: 900px) { .performance-summary { grid-template-columns: 1fr 1fr; } }
+
+/* Commission rate history */
+.rate-history { display: flex; flex-direction: column; gap: var(--sp-2); }
+.rate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3);
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  gap: var(--sp-4);
+}
+.rate-row__pct {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--clr-primary);
+  min-width: 60px;
+}
+.rate-row__period { color: var(--clr-text-muted); flex: 1; }
+.rate-row--current { border-color: var(--clr-primary); background: var(--clr-primary-light); }
+.rate-row--current .rate-row__pct { color: var(--clr-primary); }
+
+/* My Performance (staff role) */
+.my-performance-page { display: flex; flex-direction: column; gap: var(--sp-5); }
+.my-performance-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-6);
+  background: linear-gradient(135deg, var(--clr-sidebar-bg) 0%, hsl(250, 40%, 25%) 100%);
+  border-radius: var(--radius-xl);
+  color: #fff;
+}
+.my-performance-hero__avatar {
+  width: 72px; height: 72px;
+  border-radius: var(--radius-full);
+  background: var(--clr-primary);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  display: flex; align-items: center; justify-content: center;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.my-performance-hero__name { font-size: var(--text-xl); font-weight: var(--font-bold); }
+.my-performance-hero__title { font-size: var(--text-sm); opacity: 0.7; margin-top: 4px; }

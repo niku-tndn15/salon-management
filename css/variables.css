@@ -1,0 +1,120 @@
+/* ============================================================
+   DESIGN TOKENS — Salon Application V1
+   Theme: dark navy sidebar · white content · violet accent
+   Reference: Owner-Dashboard.png
+   ============================================================ */
+:root {
+
+  /* ── Brand / Primary ────────────────────────────────────────── */
+  --clr-primary:        hsl(250, 70%, 55%);   /* violet — buttons, active states */
+  --clr-primary-hover:  hsl(250, 70%, 48%);
+  --clr-primary-light:  hsl(250, 70%, 95%);   /* tinted bg for chips */
+  --clr-primary-rgb:    107, 70, 193;         /* for rgba() usage */
+
+  /* ── Semantic colours ───────────────────────────────────────── */
+  --clr-success:        hsl(145, 55%, 40%);
+  --clr-success-light:  hsl(145, 55%, 94%);
+  --clr-warning:        hsl(38, 90%, 50%);
+  --clr-warning-light:  hsl(38, 90%, 93%);
+  --clr-danger:         hsl(4, 72%, 55%);
+  --clr-danger-light:   hsl(4, 72%, 94%);
+  --clr-info:           hsl(205, 80%, 50%);
+  --clr-info-light:     hsl(205, 80%, 93%);
+
+  /* ── Neutrals (content area) ────────────────────────────────── */
+  --clr-bg:             hsl(240, 10%, 97%);   /* page background */
+  --clr-surface:        hsl(0, 0%, 100%);     /* cards, panels */
+  --clr-surface-2:      hsl(240, 8%, 95%);    /* nested / inner surfaces */
+  --clr-border:         hsl(240, 8%, 90%);
+  --clr-border-focus:   hsl(250, 70%, 55%);
+
+  /* ── Text ───────────────────────────────────────────────────── */
+  --clr-text-primary:   hsl(240, 12%, 13%);
+  --clr-text-secondary: hsl(240, 5%, 42%);
+  --clr-text-muted:     hsl(240, 4%, 62%);
+  --clr-text-disabled:  hsl(240, 4%, 78%);
+  --clr-text-inverse:   hsl(0, 0%, 100%);
+
+  /* ── Sidebar ────────────────────────────────────────────────── */
+  --clr-sidebar-bg:       hsl(238, 32%, 14%);   /* deep navy from design */
+  --clr-sidebar-bg-hover: hsl(238, 32%, 20%);
+  --clr-sidebar-active:   hsl(250, 70%, 55%);   /* violet highlight */
+  --clr-sidebar-text:     hsl(240, 12%, 72%);
+  --clr-sidebar-text-active: hsl(0, 0%, 100%);
+  --clr-sidebar-border:   hsl(238, 25%, 22%);
+  --sidebar-width:        240px;
+  --sidebar-collapsed-width: 64px;
+
+  /* ── KPI card accent colours (matches dashboard image) ─────── */
+  --clr-kpi-1: hsl(340, 80%, 62%);   /* pink  — clients */
+  --clr-kpi-2: hsl(205, 80%, 55%);   /* blue  — appointments */
+  --clr-kpi-3: hsl(250, 70%, 60%);   /* violet— services */
+  --clr-kpi-4: hsl(145, 55%, 45%);   /* green — revenue */
+
+  /* ── Spacing (4-pt grid) ────────────────────────────────────── */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* ── Typography ─────────────────────────────────────────────── */
+  --font-family:    'Inter', system-ui, -apple-system, sans-serif;
+  --text-xs:    11px;
+  --text-sm:    13px;
+  --text-base:  14px;
+  --text-md:    16px;
+  --text-lg:    18px;
+  --text-xl:    22px;
+  --text-2xl:   28px;
+  --text-3xl:   36px;
+  --font-regular:   400;
+  --font-medium:    500;
+  --font-semibold:  600;
+  --font-bold:      700;
+  --line-height-tight:  1.2;
+  --line-height-normal: 1.5;
+
+  /* ── Shadows ────────────────────────────────────────────────── */
+  --shadow-sm:  0 1px 3px hsla(0,0%,0%,0.06), 0 1px 2px hsla(0,0%,0%,0.04);
+  --shadow-md:  0 4px 6px  hsla(0,0%,0%,0.07), 0 2px 4px hsla(0,0%,0%,0.05);
+  --shadow-lg:  0 10px 15px hsla(0,0%,0%,0.08), 0 4px 6px hsla(0,0%,0%,0.05);
+  --shadow-xl:  0 20px 25px hsla(0,0%,0%,0.10), 0 8px 10px hsla(0,0%,0%,0.06);
+
+  /* ── Border radius ──────────────────────────────────────────── */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+  --radius-full: 9999px;
+
+  /* ── Transitions ────────────────────────────────────────────── */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 350ms ease;
+
+  /* ── Z-index stack ──────────────────────────────────────────── */
+  --z-sidebar:    100;
+  --z-header:     110;
+  --z-offline:    115;
+  --z-dropdown:   200;
+  --z-modal:      300;
+  --z-slideover:  290;
+  --z-toast:      400;
+
+  /* ── Layout ─────────────────────────────────────────────────── */
+  --header-height: 60px;
+  --content-max-w: 1400px;
+
+  /* ── Chart colours ───────────────────────────────────────────── */
+  --chart-1: hsl(250, 70%, 55%);
+  --chart-2: hsl(205, 80%, 55%);
+  --chart-3: hsl(38,  90%, 50%);
+  --chart-4: hsl(4,   72%, 55%);
+  --chart-5: hsl(145, 55%, 45%);
+}

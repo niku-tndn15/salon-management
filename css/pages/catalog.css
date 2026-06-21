@@ -1,0 +1,88 @@
+/* ── Service Catalog page ───────────────────────────────────── */
+
+.catalog-page { display: flex; flex-direction: column; gap: var(--sp-5); }
+
+/* Category filter strip */
+.catalog-categories {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* Service cards grid */
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--sp-4);
+}
+
+.catalog-card {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-base), border-color var(--transition-base);
+}
+.catalog-card:hover { box-shadow: var(--shadow-md); border-color: var(--clr-primary); }
+.catalog-card.inactive { opacity: 0.55; }
+
+.catalog-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.catalog-card__name {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--clr-text-primary);
+  line-height: var(--line-height-tight);
+}
+.catalog-card__category {
+  font-size: var(--text-xs);
+  color: var(--clr-text-muted);
+  margin-top: 2px;
+}
+.catalog-card__price {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--clr-primary);
+}
+.catalog-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--text-xs);
+  color: var(--clr-text-muted);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--clr-border);
+}
+.catalog-card__meta svg { width: 12px; height: 12px; stroke: currentColor; }
+.catalog-card__actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+/* Service form (inside modal) */
+.service-form { display: flex; flex-direction: column; gap: var(--sp-4); }
+.service-form__price-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+
+/* Category group headers in list view */
+.catalog-group-header {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: var(--sp-2) 0 var(--sp-1);
+  border-bottom: 1px solid var(--clr-border);
+  margin-top: var(--sp-2);
+}

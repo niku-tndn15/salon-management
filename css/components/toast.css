@@ -1,0 +1,77 @@
+/* ── Toast notification system ──────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: var(--sp-6);
+  right: var(--sp-6);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  pointer-events: none;
+  max-width: 360px;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  animation: toast-in 200ms ease;
+  border-left: 4px solid transparent;
+  min-width: 280px;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.toast.hiding {
+  animation: toast-out 200ms ease forwards;
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(20px); }
+}
+
+/* Variants */
+.toast--success { border-left-color: var(--clr-success); }
+.toast--error   { border-left-color: var(--clr-danger); }
+.toast--warning { border-left-color: var(--clr-warning); }
+.toast--info    { border-left-color: var(--clr-info); }
+
+.toast__icon { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; }
+.toast__icon svg { width: 20px; height: 20px; stroke: currentColor; }
+.toast--success .toast__icon { color: var(--clr-success); }
+.toast--error   .toast__icon { color: var(--clr-danger); }
+.toast--warning .toast__icon { color: var(--clr-warning); }
+.toast--info    .toast__icon { color: var(--clr-info); }
+
+.toast__content { flex: 1; min-width: 0; }
+.toast__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--clr-text-primary);
+  margin-bottom: 2px;
+}
+.toast__message {
+  font-size: var(--text-xs);
+  color: var(--clr-text-secondary);
+  line-height: var(--line-height-normal);
+}
+
+.toast__close {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--clr-text-muted);
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+.toast__close:hover { color: var(--clr-text-primary); background: var(--clr-surface-2); }
+.toast__close svg { width: 14px; height: 14px; stroke: currentColor; }
