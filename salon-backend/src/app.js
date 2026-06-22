@@ -19,6 +19,11 @@ const { apiRateLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 
+// Render (and most PaaS) put the app behind a reverse proxy. Trust exactly one
+// hop so req.ip reflects the real client IP for rate limiting, while still
+// preventing clients from spoofing X-Forwarded-For to evade IP-based limits.
+app.set('trust proxy', 1);
+
 app.use(helmet({
   hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
   frameguard: { action: 'deny' },

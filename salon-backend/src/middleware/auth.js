@@ -51,6 +51,10 @@ async function authenticate(req, res, next) {
           }
         });
       }
+
+      // Use the live role from the database, not the (possibly stale) role
+      // embedded in the token, so privilege changes take effect immediately.
+      payload.role = result.rows[0].role;
     } catch {
       return res.status(503).json({
         success: false,
