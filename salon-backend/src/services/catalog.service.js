@@ -231,28 +231,27 @@ async function updateServiceStatus(id, status) {
 }
 
 async function deleteService(id) {
+  const client = await db.getClient().catch((err) => ensureDatabaseConfigured(err));
+
   try {
-    const history = await db.query(
-      'SELECT COUNT(*)::int AS count FROM invoice_line_items WHERE service_id = $1',
-      [id]
-    );
+    await client.query('BEGIN');
 
-    if (history.rows[0].count > 0) {
-      throw httpError(400, 'VALIDATION_ERROR', 'Deactivate this service instead - it has invoice history.');
-    }
+    // Invoice history keeps its own service_name_snap, so we simply release the
+    // FK link on existing line items before removing the service.
+    await client.query('UPDATE invoice_line_items SET service_id = NULL WHERE service_id = $1', [id]);
 
-    const result = await db.query(
-      'DELETE FROM services WHERE id = $1 RETURNING id',
-      [id]
-    );
-
+    const result = await client.query('DELETE FROM services WHERE id = $1 RETURNING id', [id]);
     if (result.rows.length === 0) {
       throw httpError(404, 'NOT_FOUND', 'Service not found');
     }
 
-    return { message: 'Service deleted successfully' };
+    await client.query('COMMIT');
+    return { message: 'Service deleted successfully', id };
   } catch (err) {
-    ensureDatabaseConfigured(err);
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
   }
 }
 

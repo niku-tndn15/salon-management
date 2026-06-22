@@ -47,4 +47,52 @@ describe('M8 settings routes', () => {
     expect(res.status).toBe(503);
     expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
   });
+
+  it('accepts a partial salon profile update (name only)', async () => {
+    const res = await request(app)
+      .put('/api/settings/salon')
+      .set('Authorization', `Bearer ${tokenFor()}`)
+      .send({ name: 'Glamour Salon' });
+
+    // Passes validation (partial allowed) and reaches the service layer.
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
+  });
+
+  it('accepts a partial GST-only salon update', async () => {
+    const res = await request(app)
+      .put('/api/settings/salon')
+      .set('Authorization', `Bearer ${tokenFor()}`)
+      .send({ gst_enabled: false });
+
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
+  });
+
+  it('blocks BILLING_PERSON from deleting a discount offer', async () => {
+    const res = await request(app)
+      .delete('/api/settings/discounts/11111111-1111-1111-1111-111111111111')
+      .set('Authorization', `Bearer ${tokenFor('BILLING_PERSON')}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('validates the discount id on delete', async () => {
+    const res = await request(app)
+      .delete('/api/settings/discounts/not-a-uuid')
+      .set('Authorization', `Bearer ${tokenFor()}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns DB_NOT_CONFIGURED when deleting a discount without DATABASE_URL', async () => {
+    const res = await request(app)
+      .delete('/api/settings/discounts/11111111-1111-1111-1111-111111111111')
+      .set('Authorization', `Bearer ${tokenFor()}`);
+
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
+  });
 });

@@ -45,6 +45,15 @@ async function updateStaffStatus(req, res, next) {
   }
 }
 
+async function deleteStaff(req, res, next) {
+  try {
+    const data = await staffService.deleteStaff(req.validated.params.id);
+    return res.json({ success: true, data });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function getCommissionHistory(req, res, next) {
   try {
     const history = await staffService.getCommissionHistory(req.validated.params.id);
@@ -91,6 +100,7 @@ module.exports = {
   createStaff,
   updateStaff,
   updateStaffStatus,
+  deleteStaff,
   getCommissionHistory,
   updateCommission,
   getPerformance,

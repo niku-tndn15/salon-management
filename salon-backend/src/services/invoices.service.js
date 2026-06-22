@@ -46,10 +46,11 @@ async function getSalonProfile(client) {
 }
 
 async function getActiveCustomer(client, id) {
-  const result = await client.query('SELECT id FROM customers WHERE id = $1 AND status = $2', [id, 'ACTIVE']);
+  const result = await client.query('SELECT id, name, phone FROM customers WHERE id = $1 AND status = $2', [id, 'ACTIVE']);
   if (result.rows.length === 0) {
     throw httpError(404, 'NOT_FOUND', 'Customer not found or inactive');
   }
+  return result.rows[0];
 }
 
 async function getDiscountOffer(client, id) {
@@ -115,7 +116,7 @@ async function createInvoice(data, user) {
 
   try {
     await client.query('BEGIN');
-    await getActiveCustomer(client, data.customer_id);
+    const customer = await getActiveCustomer(client, data.customer_id);
 
     const lineItems = await enrichLineItems(client, data.line_items);
     const discountType = data.discount_type || 'NONE';
@@ -130,17 +131,19 @@ async function createInvoice(data, user) {
 
     const invoiceResult = await client.query(
       `INSERT INTO invoices (
-         invoice_number, customer_id, created_by, payment_method,
+         invoice_number, customer_id, customer_name_snap, customer_phone_snap, created_by, payment_method,
          subtotal, discount_type, discount_value, discount_amount,
          discount_offer_id, discount_offer_snap, taxable_amount,
          gst_enabled, cgst_amount, sgst_amount, grand_total, status,
          gstin_snap, salon_name_snap, salon_address_snap, salon_phone_snap
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'PAID', $16, $17, $18, $19)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'PAID', $18, $19, $20, $21)
        RETURNING *`,
       [
         invoiceNumber,
         data.customer_id,
+        customer.name,
+        customer.phone,
         user.id,
         data.payment_method,
         totals.subtotal,
@@ -204,7 +207,7 @@ async function listInvoices(query) {
 
     if (query.search) {
       params.push(`%${query.search.toLowerCase()}%`);
-      clauses.push(`(LOWER(i.invoice_number) LIKE $${params.length} OR LOWER(c.name) LIKE $${params.length} OR c.phone LIKE $${params.length})`);
+      clauses.push(`(LOWER(i.invoice_number) LIKE $${params.length} OR LOWER(COALESCE(c.name, i.customer_name_snap)) LIKE $${params.length} OR COALESCE(c.phone, i.customer_phone_snap) LIKE $${params.length})`);
     }
     if (query.start_date) {
       params.push(query.start_date);
@@ -227,10 +230,12 @@ async function listInvoices(query) {
     params.push(limit, offset);
 
     const result = await db.query(
-      `SELECT i.*, c.name AS customer_name, c.phone AS customer_phone,
+      `SELECT i.*,
+              COALESCE(c.name, i.customer_name_snap) AS customer_name,
+              COALESCE(c.phone, i.customer_phone_snap) AS customer_phone,
               r.refund_number, r.refund_amount
        FROM invoices i
-       JOIN customers c ON c.id = i.customer_id
+       LEFT JOIN customers c ON c.id = i.customer_id
        LEFT JOIN refunds r ON r.invoice_id = i.id
        ${where}
        ORDER BY i.invoice_date DESC, i.created_at DESC
@@ -241,7 +246,7 @@ async function listInvoices(query) {
     const countResult = await db.query(
       `SELECT COUNT(*)::int AS total
        FROM invoices i
-       JOIN customers c ON c.id = i.customer_id
+       LEFT JOIN customers c ON c.id = i.customer_id
        LEFT JOIN refunds r ON r.invoice_id = i.id
        ${where}`,
       params.slice(0, -2)
@@ -256,10 +261,12 @@ async function listInvoices(query) {
 async function getInvoice(id) {
   try {
     const invoiceResult = await db.query(
-      `SELECT i.*, c.name AS customer_name, c.phone AS customer_phone,
+      `SELECT i.*,
+              COALESCE(c.name, i.customer_name_snap) AS customer_name,
+              COALESCE(c.phone, i.customer_phone_snap) AS customer_phone,
               r.id AS refund_id, r.refund_number, r.refund_type, r.refund_amount, r.reason, r.processed_at
        FROM invoices i
-       JOIN customers c ON c.id = i.customer_id
+       LEFT JOIN customers c ON c.id = i.customer_id
        LEFT JOIN refunds r ON r.invoice_id = i.id
        WHERE i.id = $1`,
       [id]
@@ -344,9 +351,38 @@ async function refundInvoice(id, data, user) {
   }
 }
 
+async function deleteInvoice(id) {
+  const client = await db.getClient().catch((err) => {
+    ensureDatabaseConfigured(err);
+  });
+
+  try {
+    await client.query('BEGIN');
+
+    const existing = await client.query('SELECT id FROM invoices WHERE id = $1 FOR UPDATE', [id]);
+    if (existing.rows.length === 0) {
+      throw httpError(404, 'NOT_FOUND', 'Invoice not found');
+    }
+
+    // refunds reference the invoice without ON DELETE CASCADE; remove them first.
+    await client.query('DELETE FROM refunds WHERE invoice_id = $1', [id]);
+    // invoice_line_items cascade automatically via ON DELETE CASCADE.
+    await client.query('DELETE FROM invoices WHERE id = $1', [id]);
+
+    await client.query('COMMIT');
+    return { message: 'Invoice deleted successfully', id };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   createInvoice,
   listInvoices,
   getInvoice,
-  refundInvoice
+  refundInvoice,
+  deleteInvoice
 };

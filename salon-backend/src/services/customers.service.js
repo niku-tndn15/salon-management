@@ -184,6 +184,44 @@ async function updateCustomer(id, data, user) {
   }
 }
 
+async function deleteCustomer(id) {
+  const client = await db.getClient().catch((err) => ensureDatabaseConfigured(err));
+
+  try {
+    await client.query('BEGIN');
+
+    const existing = await client.query(
+      'SELECT id, name, phone FROM customers WHERE id = $1',
+      [id]
+    );
+    if (existing.rows.length === 0) {
+      throw httpError(404, 'NOT_FOUND', 'Customer not found');
+    }
+    const customer = existing.rows[0];
+
+    // Preserve invoice history: snapshot the customer name/phone onto any
+    // invoices before the customer row is removed, then null the FK link.
+    await client.query(
+      `UPDATE invoices
+       SET customer_name_snap = COALESCE(customer_name_snap, $1),
+           customer_phone_snap = COALESCE(customer_phone_snap, $2)
+       WHERE customer_id = $3`,
+      [customer.name, customer.phone, id]
+    );
+    await client.query('UPDATE invoices SET customer_id = NULL WHERE customer_id = $1', [id]);
+
+    await client.query('DELETE FROM customers WHERE id = $1', [id]);
+
+    await client.query('COMMIT');
+    return { message: 'Customer deleted successfully', id };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 async function getVisits(id, query) {
   try {
     await getCustomer(id);
@@ -333,6 +371,7 @@ module.exports = {
   getCustomer,
   createCustomer,
   updateCustomer,
+  deleteCustomer,
   getVisits,
   getLapsedCustomers,
   getBirthdays,

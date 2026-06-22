@@ -72,5 +72,6 @@ router.post('/', invoiceRateLimiter, validate(createSchema), invoicesController.
 router.get('/', validate(listSchema), invoicesController.listInvoices);
 router.get('/:id', validate(idSchema), invoicesController.getInvoice);
 router.post('/:id/refund', validate(refundSchema), invoicesController.refundInvoice);
+router.delete('/:id', requireRole('OWNER'), validate(idSchema), invoicesController.deleteInvoice);
 
 module.exports = router;

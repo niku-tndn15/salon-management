@@ -4,6 +4,7 @@
   "description": "Backend API for the Salon Management Web App",
   "main": "src/server.js",
   "scripts": {
+    "prestart": "node src/db/migrations/run_migrations.js",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "db:migrate": "node src/db/migrations/run_migrations.js",

@@ -4,7 +4,7 @@
  */
 
 import { registerRoute } from '../router.js';
-import db, { updateServiceStatus } from '../db.js';
+import db, { updateServiceStatus, deleteService } from '../db.js';
 import toast            from '../components/toast.js';
 import { hasRole }      from '../auth.js';
 
@@ -86,6 +86,12 @@ async function _renderCatalog() {
       } catch {
         toast.error('Failed to update service status.');
       }
+      return;
+    }
+    const deleteBtn = e.target.closest('[data-delete]');
+    if (deleteBtn) {
+      const svc = _services.find(s => String(s.id) === deleteBtn.dataset.delete);
+      if (svc) _openDeleteModal(svc);
     }
   });
 
@@ -132,6 +138,10 @@ function _renderGrid() {
           <button class="btn btn--sm ${isActive ? 'btn--ghost' : 'btn--primary'}"
                   data-toggle="${s.id}" data-status="${s.status}">
             ${isActive ? 'Deactivate' : 'Activate'}
+          </button>
+          <button class="btn btn--sm btn--ghost" data-delete="${s.id}"
+                  style="color:var(--clr-danger);border-color:var(--clr-danger);">
+            <i data-lucide="trash-2"></i> Delete
           </button>
         </div>` : ''}
       </div>
@@ -227,6 +237,58 @@ function _openModal(service = null) {
       _renderGrid();
     } catch {
       toast.error('Failed to save service. Please try again.');
+      btn.disabled = false;
+    }
+  });
+}
+
+// ── Delete service modal ──────────────────────────────────────────────────────
+
+function _openDeleteModal(service) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal modal--sm">
+      <div class="modal__header">
+        <div class="modal__title">Delete ${_esc(service.name)}?</div>
+        <button class="modal__close" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal__body">
+        <p style="font-size:var(--text-sm);color:var(--clr-text-secondary);">
+          This permanently removes <strong>${_esc(service.name)}</strong> from the catalog and database.
+          Past invoices that used this service are preserved. This cannot be undone.
+        </p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" id="del-cancel">Cancel</button>
+        <button class="btn btn--primary" id="del-confirm"
+                style="background:var(--clr-danger);border-color:var(--clr-danger);">Delete</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  if (window.lucide) window.lucide.createIcons({ nodes: [overlay] });
+
+  const close = () => { if (!overlay.isConnected) return; overlay.remove(); };
+  overlay.querySelector('.modal__close').addEventListener('click', close);
+  overlay.querySelector('#del-cancel').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', function _escKey(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', _escKey); }
+  });
+
+  overlay.querySelector('#del-confirm').addEventListener('click', async () => {
+    const btn = overlay.querySelector('#del-confirm');
+    btn.disabled = true;
+    try {
+      await deleteService(service.id);
+      _services = _services.filter(s => String(s.id) !== String(service.id));
+      toast.success('Service deleted.');
+      close();
+      _renderGrid();
+    } catch (err) {
+      console.error('Failed to delete service:', err);
+      toast.error(err?.message || 'Failed to delete service.');
       btn.disabled = false;
     }
   });

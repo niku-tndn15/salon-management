@@ -258,14 +258,36 @@ function _salonFromApi(s) {
 }
 
 function _salonToApi(data) {
-  return {
-    name: data.name,
-    address: data.address || '',
-    phone: data.phone || '',
-    email: data.email || '',
-    gstin: data.gstin || '',
-    gst_enabled: Boolean(data.gstEnabled),
-  };
+  // Only include fields explicitly provided so partial saves (e.g. just the
+  // salon name, or just GST settings) don't blank out the other fields.
+  const out = {};
+  if (data.name !== undefined)       out.name        = data.name;
+  if (data.address !== undefined)    out.address     = data.address || '';
+  if (data.phone !== undefined)      out.phone       = data.phone || '';
+  if (data.email !== undefined)      out.email       = data.email || '';
+  if (data.gstin !== undefined)      out.gstin       = data.gstin || '';
+  if (data.gstEnabled !== undefined) out.gst_enabled = Boolean(data.gstEnabled);
+  return out;
+}
+
+const SALON_NAME_KEY = 'salon_name';
+
+function _persistSalonName(name) {
+  if (!name) return;
+  try {
+    if (localStorage.getItem(SALON_NAME_KEY) !== name) {
+      localStorage.setItem(SALON_NAME_KEY, name);
+    }
+  } catch { /* ignore storage errors */ }
+  document.dispatchEvent(new CustomEvent('salon:profile-updated', { detail: { name } }));
+}
+
+export function getCachedSalonName() {
+  try {
+    return localStorage.getItem(SALON_NAME_KEY) || 'Glamour Salon';
+  } catch {
+    return 'Glamour Salon';
+  }
 }
 
 async function _cacheCustomers(customers) {
@@ -377,6 +399,8 @@ export async function hydrateFromBackend() {
     }
   );
 
+  if (salon?.name) _persistSalonName(salon.name);
+
   localStorage.setItem('salon_last_backend_sync', new Date().toISOString());
   return {
     skipped: false,
@@ -446,6 +470,14 @@ export async function updateCustomer(id, data) {
     updatedAt:  new Date().toISOString(),
     syncStatus: 'PENDING',
   });
+}
+
+export async function deleteCustomer(id) {
+  if (_apiEnabled()) {
+    await api.customers.delete(id);
+  }
+  await db.customers.delete(id).catch(() => {});
+  return { id };
 }
 
 export async function getCustomerWithStats(id) {
@@ -656,6 +688,18 @@ export async function processRefund(invoiceId, refundData) {
   });
 }
 
+export async function deleteInvoice(id) {
+  if (_apiEnabled()) {
+    await api.invoices.delete(id);
+  }
+  await db.transaction('rw', db.invoices, db.invoiceLineItems, db.refunds, async () => {
+    await db.invoiceLineItems.where('invoiceId').equals(id).delete().catch(() => {});
+    await db.refunds.where('invoiceId').equals(id).delete().catch(() => {});
+    await db.invoices.delete(id).catch(() => {});
+  }).catch(() => {});
+  return { id };
+}
+
 // ── Staff helpers ─────────────────────────────────────────────────────────────
 
 export async function getActiveStaff() {
@@ -752,6 +796,15 @@ export async function updateStaffStatus(id, status, payload = {}) {
     ?? await db.users.filter(u => u.name === staff?.name && u.role === 'STAFF').first();
   if (user) await db.users.update(user.id, { status });
   return staff ? { ...staff, status } : null;
+}
+
+export async function deleteStaffMember(id) {
+  if (_apiEnabled()) {
+    await api.staff.delete(id);
+  }
+  await db.staff.delete(id).catch(() => {});
+  await db.commissionRateHistory.where('staffId').equals(id).delete().catch(() => {});
+  return { id };
 }
 
 export async function getCommissionRateOnDate(staffId, dateStr) {
@@ -954,9 +1007,16 @@ export async function getSalonProfile() {
   return _apiOrLocal(async () => {
     const salon = await api.settings.salon();
     const mapped = _salonFromApi(salon);
-    if (mapped) await db.salonProfile.put(mapped);
+    if (mapped) {
+      await db.salonProfile.put(mapped);
+      _persistSalonName(mapped.name);
+    }
     return mapped;
-  }, () => db.salonProfile.toCollection().first());
+  }, async () => {
+    const profile = await db.salonProfile.toCollection().first();
+    if (profile?.name) _persistSalonName(profile.name);
+    return profile;
+  });
 }
 
 export async function updateSalonProfile(data) {
@@ -964,13 +1024,21 @@ export async function updateSalonProfile(data) {
     const salon = await api.settings.updateSalon(_salonToApi(data));
     const mapped = _salonFromApi(salon);
     await db.salonProfile.put(mapped);
+    _persistSalonName(mapped.name);
     return mapped.id;
   }
 
   const profile = await getSalonProfile();
   const now     = new Date().toISOString();
-  if (profile) return db.salonProfile.update(profile.id, { ...data, updatedAt: now });
-  return db.salonProfile.add({ ...data, createdAt: now });
+  if (profile) {
+    await db.salonProfile.update(profile.id, { ...data, updatedAt: now });
+    const updated = await db.salonProfile.get(profile.id);
+    if (updated?.name) _persistSalonName(updated.name);
+    return profile.id;
+  }
+  const id = await db.salonProfile.add({ ...data, createdAt: now });
+  if (data.name) _persistSalonName(data.name);
+  return id;
 }
 
 export async function getActiveDiscountOffers() {
@@ -1108,6 +1176,22 @@ export async function resetUserPassword(id) {
   return { user: await db.users.get(id), temporaryPassword };
 }
 
+export async function deleteService(id) {
+  if (_apiEnabled()) {
+    await api.catalog.deleteService(id);
+  }
+  await db.services.delete(id).catch(() => {});
+  return { id };
+}
+
+export async function deleteDiscountOffer(id) {
+  if (_apiEnabled()) {
+    await api.settings.deleteDiscount(id);
+  }
+  await db.predefinedDiscountOffers.delete(id).catch(() => {});
+  return { id };
+}
+
 export async function updateServiceStatus(id, status) {
   if (_apiEnabled()) {
     const apiStatus = status === 'ACTIVE' ? 'active' : 'inactive';
@@ -1208,7 +1292,7 @@ async function _seedDatabase() {
 
   // 1 ── Salon profile
   await db.salonProfile.add({
-    name:       'Glamour Studio',
+    name:       'Glamour Salon',
     address:    'Shop 4, Anand Nagar, Bandra West, Mumbai 400050',
     phone:      '022-24987600',
     email:      'glamourstudio@example.com',
@@ -1219,7 +1303,7 @@ async function _seedDatabase() {
 
   // 2 ── Users
   const userIds = await db.users.bulkAdd([
-    { username: 'owner',   passwordHash: pwd, name: 'Priya Sharma', role: 'OWNER',          status: 'ACTIVE', failedAttempts: 0, lockedUntil: null },
+    { username: 'owner',   passwordHash: pwd, name: 'Samay Raina',  role: 'OWNER',          status: 'ACTIVE', failedAttempts: 0, lockedUntil: null },
     { username: 'billing', passwordHash: pwd, name: 'Meena Patel',  role: 'BILLING_PERSON', status: 'ACTIVE', failedAttempts: 0, lockedUntil: null },
     { username: 'anita',   passwordHash: pwd, name: 'Anita Singh',  role: 'STAFF',          status: 'ACTIVE', failedAttempts: 0, lockedUntil: null },
     { username: 'ravi',    passwordHash: pwd, name: 'Ravi Kumar',   role: 'STAFF',          status: 'ACTIVE', failedAttempts: 0, lockedUntil: null },

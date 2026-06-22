@@ -5,7 +5,7 @@
  */
 
 import { registerRoute } from '../router.js';
-import db, { createStaffMember, getStaffDirectory, getStaffPerformance, getCommissionRateOnDate, updateStaffStatus } from '../db.js';
+import db, { createStaffMember, getStaffDirectory, getStaffPerformance, getCommissionRateOnDate, updateStaffStatus, deleteStaffMember } from '../db.js';
 import { currentUser } from '../auth.js';
 import toast from '../components/toast.js';
 
@@ -114,6 +114,12 @@ async function _renderDirectory(container) {
     if (togBtn) {
       const s = _allStaff.find(x => String(x.id) === togBtn.dataset.toggle);
       if (s) _openToggleModal(s);
+      return;
+    }
+    const delBtn = e.target.closest('[data-delete]');
+    if (delBtn) {
+      const s = _allStaff.find(x => String(x.id) === delBtn.dataset.delete);
+      if (s) _openDeleteStaffModal(s);
     }
   });
 }
@@ -156,6 +162,10 @@ function _staffCardHTML(s, commPct) {
         <button class="btn btn--sm ${isActive ? 'btn--ghost' : 'btn--primary'}" data-toggle="${s.id}"
                 style="${isActive ? 'color:var(--clr-danger);border-color:var(--clr-danger);' : ''}">
           ${isActive ? 'Deactivate' : 'Reactivate'}
+        </button>
+        <button class="btn btn--sm btn--ghost" data-delete="${s.id}"
+                style="color:var(--clr-danger);border-color:var(--clr-danger);">
+          <i data-lucide="trash-2"></i> Delete
         </button>
       </div>
     </div>
@@ -501,6 +511,58 @@ function _openToggleModal(staff) {
       if (view) _renderDirectory(view);
     } catch {
       toast.error('Failed to update status.');
+      btn.disabled = false;
+    }
+  });
+}
+
+// ── Delete Staff Modal ─────────────────────────────────────────────────────────
+function _openDeleteStaffModal(staff) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal modal--sm">
+      <div class="modal__header">
+        <div class="modal__title">Delete ${_esc(staff.name)}?</div>
+        <button class="modal__close" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal__body">
+        <p style="font-size:var(--text-sm);color:var(--clr-text-secondary);">
+          This permanently removes <strong>${_esc(staff.name)}</strong> and their login account from the database.
+          Past invoices and performance history are preserved. This cannot be undone.
+        </p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" id="del-cancel">Cancel</button>
+        <button class="btn btn--primary" id="del-confirm"
+                style="background:var(--clr-danger);border-color:var(--clr-danger);">Delete</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  if (window.lucide) window.lucide.createIcons({ nodes: [overlay] });
+
+  const close = () => { if (!overlay.isConnected) return; overlay.remove(); };
+  overlay.querySelector('.modal__close').addEventListener('click', close);
+  overlay.querySelector('#del-cancel').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', function _escKey(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', _escKey); }
+  });
+
+  overlay.querySelector('#del-confirm').addEventListener('click', async () => {
+    const btn = overlay.querySelector('#del-confirm');
+    btn.disabled = true;
+    try {
+      await deleteStaffMember(staff.id);
+      _allStaff = await getStaffDirectory();
+      toast.success(`${staff.name} deleted.`);
+      close();
+      const view = document.getElementById('staff-view');
+      if (view) _renderDirectory(view);
+    } catch (err) {
+      console.error('Failed to delete staff member:', err);
+      toast.error(err?.message || 'Failed to delete staff member.');
       btn.disabled = false;
     }
   });

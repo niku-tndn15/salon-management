@@ -15,11 +15,11 @@ DECLARE
   customer_count INTEGER;
 BEGIN
   INSERT INTO salon_profile (name, address, phone, gst_enabled, gstin)
-  SELECT 'Salon App', 'Main Market Road, Mumbai', '9876543210', FALSE, NULL
+  SELECT 'Glamour Salon', 'Main Market Road, Mumbai', '9876543210', FALSE, NULL
   WHERE NOT EXISTS (SELECT 1 FROM salon_profile);
 
   INSERT INTO users (username, password_hash, full_name, role, force_password_change)
-  VALUES ('owner', '$2a$12$kSbTKQXsz2oNHf9V/RUXDOjzSATJwVm7Sh27T4NOdG.4w2Ko3P86m', 'Salon Owner', 'OWNER', FALSE)
+  VALUES ('owner', '$2a$12$kSbTKQXsz2oNHf9V/RUXDOjzSATJwVm7Sh27T4NOdG.4w2Ko3P86m', 'Samay Raina', 'OWNER', FALSE)
   ON CONFLICT (username) DO UPDATE
   SET full_name = EXCLUDED.full_name,
       role = EXCLUDED.role,

@@ -8,9 +8,9 @@ import { registerRoute } from '../router.js';
 import db, {
   findCustomerByPhone, createCustomer, getCustomerWithStats,
   getActiveStaff, getSalonProfile, getActiveDiscountOffers,
-  createInvoice, getInvoiceWithLineItems, processRefund,
+  createInvoice, getInvoiceWithLineItems, processRefund, deleteInvoice,
 } from '../db.js';
-import { currentUser } from '../auth.js';
+import { currentUser, hasRole } from '../auth.js';
 import toast           from '../components/toast.js';
 
 registerRoute('/billing', _renderBilling);
@@ -836,6 +836,7 @@ async function _renderHistory(container) {
 
   const badgeCls = s => s==='PAID'?'badge--active':s==='REFUNDED'?'badge--refunded':'badge--partially-refunded';
   const badgeLbl = s => s==='PAID'?'Paid':s==='REFUNDED'?'Refunded':'Partial Refund';
+  const canDelete = hasRole('OWNER');
 
   const renderTable = () => {
     const q   = (document.getElementById('h-search')?.value ?? '').toLowerCase();
@@ -857,21 +858,29 @@ async function _renderHistory(container) {
     const tbody = document.getElementById('h-tbody');
     if (!tbody) return;
 
+    const colCount = canDelete ? 7 : 6;
     if (!filtered.length) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:var(--sp-8);color:var(--clr-text-muted);">No invoices found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;padding:var(--sp-8);color:var(--clr-text-muted);">No invoices found.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = filtered.map(inv => `
       <tr style="cursor:pointer;" data-inv-id="${inv.id}">
         <td>${_esc(inv.invoiceNumber??'')}</td>
-        <td>${_esc(custMap[inv.customerId]?.name??'—')}</td>
+        <td>${_esc(custMap[inv.customerId]?.name ?? inv.customerName ?? '—')}</td>
         <td>${new Date(inv.invoiceDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</td>
         <td style="font-weight:600;">${_fmt(inv.grandTotal)}</td>
         <td><span class="badge badge--no-dot badge--cash" style="text-transform:uppercase;">${_esc(inv.paymentMethod??'')}</span></td>
         <td><span class="badge badge--no-dot ${badgeCls(inv.status)}">${badgeLbl(inv.status)}</span></td>
+        ${canDelete ? `<td>
+          <button class="btn btn--ghost btn--sm" data-inv-delete="${inv.id}"
+                  style="color:var(--clr-danger);border-color:var(--clr-danger);">
+            <i data-lucide="trash-2"></i> Delete
+          </button>
+        </td>` : ''}
       </tr>
     `).join('');
+    if (window.lucide) window.lucide.createIcons({ nodes: [tbody] });
   };
 
   container.innerHTML = `
@@ -887,7 +896,7 @@ async function _renderHistory(container) {
       </div>
       <div class="table-wrapper">
         <table class="table">
-          <thead><tr><th>Invoice #</th><th>Customer</th><th>Date</th><th>Amount</th><th>Payment</th><th>Status</th></tr></thead>
+          <thead><tr><th>Invoice #</th><th>Customer</th><th>Date</th><th>Amount</th><th>Payment</th><th>Status</th>${canDelete ? '<th>Actions</th>' : ''}</tr></thead>
           <tbody id="h-tbody"></tbody>
         </table>
       </div>
@@ -902,10 +911,69 @@ async function _renderHistory(container) {
   });
 
   document.getElementById('h-tbody')?.addEventListener('click', async e => {
+    const delBtn = e.target.closest('[data-inv-delete]');
+    if (delBtn) {
+      const inv = invoices.find(i => String(i.id) === delBtn.dataset.invDelete);
+      if (inv) _openDeleteInvoiceModal(inv, custMap, container);
+      return;
+    }
     const row = e.target.closest('[data-inv-id]');
     if (!row) return;
     const full = await getInvoiceWithLineItems(row.dataset.invId);
     if (full) _openDetailModal(full, custMap);
+  });
+}
+
+// ── Delete Invoice Modal ───────────────────────────────────────────────────────
+function _openDeleteInvoiceModal(inv, custMap, container) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const custName = custMap?.[inv.customerId]?.name ?? inv.customerName ?? '';
+  overlay.innerHTML = `
+    <div class="modal modal--sm">
+      <div class="modal__header">
+        <div class="modal__title">Delete ${_esc(inv.invoiceNumber ?? 'invoice')}?</div>
+        <button class="modal__close" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal__body">
+        <p style="font-size:var(--text-sm);color:var(--clr-text-secondary);">
+          This permanently removes invoice <strong>${_esc(inv.invoiceNumber ?? '')}</strong>
+          ${custName ? `for <strong>${_esc(custName)}</strong> ` : ''}along with its line items and any refund record.
+          This cannot be undone.
+        </p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" id="di-cancel">Cancel</button>
+        <button class="btn btn--primary" id="di-confirm"
+                style="background:var(--clr-danger);border-color:var(--clr-danger);">Delete</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  if (window.lucide) window.lucide.createIcons({ nodes: [overlay] });
+
+  const close = () => { if (!overlay.isConnected) return; overlay.remove(); };
+  overlay.querySelector('.modal__close')?.addEventListener('click', close);
+  overlay.querySelector('#di-cancel')?.addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', function _escKey(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', _escKey); }
+  });
+
+  overlay.querySelector('#di-confirm')?.addEventListener('click', async () => {
+    const btn = overlay.querySelector('#di-confirm');
+    btn.disabled = true;
+    try {
+      await deleteInvoice(inv.id);
+      toast.success(`Invoice ${inv.invoiceNumber ?? ''} deleted.`);
+      close();
+      const view = document.getElementById('billing-view');
+      if (view && _tab === 'history') _renderHistory(view);
+    } catch (err) {
+      console.error('Failed to delete invoice:', err);
+      toast.error(err?.message || 'Failed to delete invoice.');
+      btn.disabled = false;
+    }
   });
 }
 

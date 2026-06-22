@@ -114,7 +114,7 @@ const ROUTE_ROLES = {
   '/customers':      [ROLES.OWNER, ROLES.BILLING_PERSON],
   '/staff':          [ROLES.OWNER],
   '/catalog':        [ROLES.OWNER, ROLES.BILLING_PERSON],
-  '/my-performance': [ROLES.OWNER, ROLES.STAFF],
+  '/my-performance': [ROLES.STAFF],
   '/settings':       [ROLES.OWNER],
 };
 

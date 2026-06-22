@@ -47,4 +47,31 @@ describe('M5 invoice routes', () => {
     expect(res.status).toBe(503);
     expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
   });
+
+  it('blocks BILLING_PERSON from deleting an invoice (owner-only)', async () => {
+    const res = await request(app)
+      .delete('/api/invoices/11111111-1111-1111-1111-111111111111')
+      .set('Authorization', `Bearer ${tokenFor('BILLING_PERSON')}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('validates the invoice id on delete', async () => {
+    const res = await request(app)
+      .delete('/api/invoices/not-a-uuid')
+      .set('Authorization', `Bearer ${tokenFor()}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns DB_NOT_CONFIGURED when deleting an invoice without DATABASE_URL', async () => {
+    const res = await request(app)
+      .delete('/api/invoices/11111111-1111-1111-1111-111111111111')
+      .set('Authorization', `Bearer ${tokenFor()}`);
+
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
+  });
 });

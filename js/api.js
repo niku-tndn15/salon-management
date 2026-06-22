@@ -155,6 +155,10 @@ export const api = {
       const res = await apiFetch(`/catalog/services/${id}/status`, { method: 'PATCH', body: { status } });
       return res.data.service;
     },
+    async deleteService(id) {
+      const res = await apiFetch(`/catalog/services/${id}`, { method: 'DELETE' });
+      return res.data;
+    },
   },
 
   customers: {
@@ -173,6 +177,10 @@ export const api = {
     async update(id, payload) {
       const res = await apiFetch(`/customers/${id}`, { method: 'PUT', body: payload });
       return res.data.customer;
+    },
+    async delete(id) {
+      const res = await apiFetch(`/customers/${id}`, { method: 'DELETE' });
+      return res.data;
     },
     async visits(id, params = {}) {
       const res = await apiFetch(`/customers/${id}/visits${_query(params)}`);
@@ -205,6 +213,10 @@ export const api = {
       const res = await apiFetch(`/invoices/${id}/refund`, { method: 'POST', body: payload });
       return res.data.refund;
     },
+    async delete(id) {
+      const res = await apiFetch(`/invoices/${id}`, { method: 'DELETE' });
+      return res.data;
+    },
   },
 
   staff: {
@@ -222,6 +234,10 @@ export const api = {
         body: { status, ...payload },
       });
       return res.data.staff;
+    },
+    async delete(id) {
+      const res = await apiFetch(`/staff/${id}`, { method: 'DELETE' });
+      return res.data;
     },
     async performance(id, params = {}) {
       const res = await apiFetch(`/staff/${id}/performance${_query(params)}`);
@@ -276,6 +292,10 @@ export const api = {
     async updateDiscountStatus(id, status) {
       const res = await apiFetch(`/settings/discounts/${id}/status`, { method: 'PATCH', body: { status } });
       return res.data.discount;
+    },
+    async deleteDiscount(id) {
+      const res = await apiFetch(`/settings/discounts/${id}`, { method: 'DELETE' });
+      return res.data;
     },
   },
 

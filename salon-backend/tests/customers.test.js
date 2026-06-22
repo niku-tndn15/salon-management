@@ -47,4 +47,31 @@ describe('M4 customer routes', () => {
     expect(res.status).toBe(503);
     expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
   });
+
+  it('blocks BILLING_PERSON from deleting a customer (owner-only)', async () => {
+    const res = await request(app)
+      .delete('/api/customers/11111111-1111-1111-1111-111111111111')
+      .set('Authorization', `Bearer ${tokenFor('BILLING_PERSON')}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('validates the customer id on delete', async () => {
+    const res = await request(app)
+      .delete('/api/customers/not-a-uuid')
+      .set('Authorization', `Bearer ${tokenFor()}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns DB_NOT_CONFIGURED when deleting a customer without DATABASE_URL', async () => {
+    const res = await request(app)
+      .delete('/api/customers/11111111-1111-1111-1111-111111111111')
+      .set('Authorization', `Bearer ${tokenFor()}`);
+
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
+  });
 });

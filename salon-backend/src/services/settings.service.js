@@ -18,15 +18,41 @@ async function getSalon() {
   }
 }
 
+function pick(value, fallback) {
+  return value === undefined ? fallback : value;
+}
+
 async function updateSalon(data) {
   try {
-    const existing = await db.query('SELECT id FROM salon_profile ORDER BY updated_at DESC LIMIT 1');
+    const existing = await db.query('SELECT * FROM salon_profile ORDER BY updated_at DESC LIMIT 1');
+
+    // Merge incoming fields over the current profile so callers can send a
+    // partial payload (e.g. just the salon name, or just the GST settings).
+    const current = existing.rows[0] || {};
+    const merged = {
+      name: pick(data.name, current.name),
+      address: pick(data.address, current.address),
+      phone: pick(data.phone, current.phone),
+      gst_enabled: pick(data.gst_enabled, current.gst_enabled ?? false),
+      gstin: pick(data.gstin, current.gstin ?? null)
+    };
+
+    if (!merged.name || !String(merged.name).trim()) {
+      throw httpError(400, 'VALIDATION_ERROR', 'Salon name is required');
+    }
+    if (merged.gst_enabled && (!merged.gstin || String(merged.gstin).trim().length !== 15)) {
+      throw httpError(400, 'VALIDATION_ERROR', 'GSTIN is required (15 characters) when GST is enabled');
+    }
+    if (!merged.gst_enabled) {
+      merged.gstin = null;
+    }
+
     if (existing.rows.length === 0) {
       const created = await db.query(
         `INSERT INTO salon_profile (name, address, phone, gst_enabled, gstin)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [data.name, data.address, data.phone, data.gst_enabled, data.gstin || null]
+        [merged.name, merged.address || '', merged.phone || '', merged.gst_enabled, merged.gstin]
       );
       return created.rows[0];
     }
@@ -41,7 +67,7 @@ async function updateSalon(data) {
            updated_at = NOW()
        WHERE id = $6
        RETURNING *`,
-      [data.name, data.address, data.phone, data.gst_enabled, data.gstin || null, existing.rows[0].id]
+      [merged.name, merged.address || '', merged.phone || '', merged.gst_enabled, merged.gstin, current.id]
     );
     return result.rows[0];
   } catch (err) {
@@ -101,10 +127,38 @@ async function updateDiscountStatus(id, status) {
   }
 }
 
+async function deleteDiscount(id) {
+  const client = await db.getClient().catch((err) => ensureDatabaseConfigured(err));
+
+  try {
+    await client.query('BEGIN');
+
+    // Invoices keep discount_offer_snap, so release the FK link before deleting.
+    await client.query('UPDATE invoices SET discount_offer_id = NULL WHERE discount_offer_id = $1', [id]);
+
+    const result = await client.query(
+      'DELETE FROM predefined_discount_offers WHERE id = $1 RETURNING id',
+      [id]
+    );
+    if (result.rows.length === 0) {
+      throw httpError(404, 'NOT_FOUND', 'Discount offer not found');
+    }
+
+    await client.query('COMMIT');
+    return { message: 'Discount offer deleted successfully', id };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   getSalon,
   updateSalon,
   listDiscounts,
   createDiscount,
-  updateDiscountStatus
+  updateDiscountStatus,
+  deleteDiscount
 };

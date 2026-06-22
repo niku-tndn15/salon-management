@@ -8,11 +8,14 @@ import db, {
   findCustomerByPhone,
   getActiveCustomers,
   createCustomer,
+  updateCustomer,
+  deleteCustomer,
   getCustomerWithStats,
   getLapsedCustomers,
   getUpcomingBirthdays,
   getInvoicesByCustomer,
 } from '../db.js';
+import { hasRole } from '../auth.js';
 import toast from '../components/toast.js';
 
 registerRoute('/customers', _renderCustomers);
@@ -115,6 +118,7 @@ async function _renderAllTab(container) {
               <th>Phone</th>
               <th>Gender</th>
               <th>Source</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="cust-tbody">
@@ -134,11 +138,27 @@ async function _renderAllTab(container) {
       ? _allCustomers.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q))
       : _allCustomers;
     const tbody = document.getElementById('cust-tbody');
-    if (tbody) tbody.innerHTML = _buildCustomerRows(filtered);
+    if (tbody) {
+      tbody.innerHTML = _buildCustomerRows(filtered);
+      if (window.lucide) window.lucide.createIcons({ nodes: [tbody] });
+    }
   });
 
-  // Row click → profile (delegation on tbody, persists through search replaces)
+  // Row click → profile (delegation on tbody, persists through search replaces).
+  // Edit/Delete action buttons are handled first and stop the row navigation.
   document.getElementById('cust-tbody')?.addEventListener('click', async e => {
+    const editBtn = e.target.closest('[data-cust-edit]');
+    if (editBtn) {
+      const cust = _allCustomers.find(c => String(c.id) === editBtn.dataset.custEdit);
+      if (cust) _openEditCustomerModal(container, cust);
+      return;
+    }
+    const delBtn = e.target.closest('[data-cust-delete]');
+    if (delBtn) {
+      const cust = _allCustomers.find(c => String(c.id) === delBtn.dataset.custDelete);
+      if (cust) await _confirmDeleteCustomer(container, cust);
+      return;
+    }
     const row = e.target.closest('[data-cust-id]');
     if (row) await _renderProfile(container, row.dataset.custId);
   });
@@ -150,8 +170,9 @@ async function _renderAllTab(container) {
 
 function _buildCustomerRows(customers) {
   if (!customers.length) {
-    return `<tr><td colspan="4" style="text-align:center;color:var(--clr-text-muted);padding:var(--sp-8);">No customers found.</td></tr>`;
+    return `<tr><td colspan="5" style="text-align:center;color:var(--clr-text-muted);padding:var(--sp-8);">No customers found.</td></tr>`;
   }
+  const canDelete = hasRole('OWNER');
   return customers.map(c => `
     <tr style="cursor:pointer;" data-cust-id="${c.id}">
       <td>
@@ -165,6 +186,17 @@ function _buildCustomerRows(customers) {
       <td class="col-mono">${_esc(c.phone)}</td>
       <td>${_esc(c.gender ?? '—')}</td>
       <td>${_esc(c.referralSource ?? '—')}</td>
+      <td>
+        <div style="display:flex;gap:var(--sp-2);">
+          <button class="btn btn--ghost btn--sm" data-cust-edit="${c.id}">
+            <i data-lucide="pencil"></i> Edit
+          </button>
+          ${canDelete ? `<button class="btn btn--ghost btn--sm" data-cust-delete="${c.id}"
+                  style="color:var(--clr-danger);border-color:var(--clr-danger);">
+            <i data-lucide="trash-2"></i> Delete
+          </button>` : ''}
+        </div>
+      </td>
     </tr>
   `).join('');
 }
@@ -499,7 +531,163 @@ function _openAddCustomerModal(container) {
   });
 }
 
+// ── Edit Customer modal ───────────────────────────────────────────────────────
+
+function _openEditCustomerModal(container, customer) {
+  const genderOpt = ['Female', 'Male', 'Other', 'Prefer not to say']
+    .map(g => `<option${customer.gender === g ? ' selected' : ''}>${g}</option>`).join('');
+  const refOpt = ['Walk-in', 'Friend Referral', 'Instagram', 'Google', 'Facebook', 'Other']
+    .map(r => `<option${customer.referralSource === r ? ' selected' : ''}>${r}</option>`).join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal__header">
+        <div class="modal__title">Edit Customer</div>
+        <button class="modal__close" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal__body">
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Full Name <span class="required">*</span></label>
+            <input class="form-input" id="ec-name" type="text" value="${_escAttr(customer.name)}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input class="form-input" id="ec-phone" type="tel" value="${_escAttr(customer.phone)}" readonly
+                   style="background:var(--clr-bg);color:var(--clr-text-muted);" />
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Gender</label>
+            <select class="form-select" id="ec-gender">
+              <option value="">Select…</option>
+              ${genderOpt}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date of Birth</label>
+            <input class="form-input" id="ec-dob" type="date" value="${_escAttr(customer.dateOfBirth ?? '')}" max="${_todayStr()}" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Referral Source</label>
+          <select class="form-select" id="ec-ref">
+            <option value="">Select…</option>
+            ${refOpt}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="ec-notes">${_esc(customer.notes ?? '')}</textarea>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" id="ec-cancel">Cancel</button>
+        <button class="btn btn--primary" id="ec-save">Save Changes</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  if (window.lucide) window.lucide.createIcons({ nodes: [overlay] });
+
+  const close = () => { if (!overlay.isConnected) return; overlay.remove(); };
+  overlay.querySelector('.modal__close').addEventListener('click', close);
+  overlay.querySelector('#ec-cancel').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', function _escKey(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', _escKey); }
+  });
+
+  overlay.querySelector('#ec-save').addEventListener('click', async () => {
+    const name = document.getElementById('ec-name').value.trim();
+    if (!name) { toast.error('Name is required.'); return; }
+
+    const saveBtn = overlay.querySelector('#ec-save');
+    saveBtn.disabled = true;
+    try {
+      await updateCustomer(customer.id, {
+        name,
+        phone:          customer.phone,
+        gender:         document.getElementById('ec-gender').value || null,
+        dateOfBirth:    document.getElementById('ec-dob').value    || customer.dateOfBirth || null,
+        referralSource: document.getElementById('ec-ref').value    || null,
+        notes:          document.getElementById('ec-notes').value.trim() || null,
+      });
+      toast.success('Customer updated.');
+      close();
+      await _renderAllTab(container);
+    } catch (err) {
+      console.error('Failed to update customer:', err);
+      toast.error(err?.message || 'Failed to update customer.');
+      saveBtn.disabled = false;
+    }
+  });
+}
+
+// ── Delete Customer ───────────────────────────────────────────────────────────
+
+async function _confirmDeleteCustomer(container, customer) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal modal--sm">
+      <div class="modal__header">
+        <div class="modal__title">Delete ${_esc(customer.name)}?</div>
+        <button class="modal__close" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal__body">
+        <p style="font-size:var(--text-sm);color:var(--clr-text-secondary);">
+          This permanently removes <strong>${_esc(customer.name)}</strong> from the customer list and database.
+          Past invoices are kept for your records. This cannot be undone.
+        </p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" id="dc-cancel">Cancel</button>
+        <button class="btn btn--primary" id="dc-confirm"
+                style="background:var(--clr-danger);border-color:var(--clr-danger);">Delete</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  if (window.lucide) window.lucide.createIcons({ nodes: [overlay] });
+
+  const close = () => { if (!overlay.isConnected) return; overlay.remove(); };
+  overlay.querySelector('.modal__close').addEventListener('click', close);
+  overlay.querySelector('#dc-cancel').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', function _escKey(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', _escKey); }
+  });
+
+  overlay.querySelector('#dc-confirm').addEventListener('click', async () => {
+    const btn = overlay.querySelector('#dc-confirm');
+    btn.disabled = true;
+    try {
+      await deleteCustomer(customer.id);
+      toast.success(`${customer.name} deleted.`);
+      close();
+      await _renderAllTab(container);
+    } catch (err) {
+      console.error('Failed to delete customer:', err);
+      toast.error(err?.message || 'Failed to delete customer.');
+      btn.disabled = false;
+    }
+  });
+}
+
 // ── Utilities ─────────────────────────────────────────────────────────────────
+
+function _todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function _escAttr(str) {
+  return _esc(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
 function _fmt(n) {
   return '₹' + Number(n ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });

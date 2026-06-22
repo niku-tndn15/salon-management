@@ -103,6 +103,7 @@ router.get('/reports/referrals', requireRole('OWNER'), customersController.getRe
 router.post('/merge', requireRole('OWNER'), validate(mergeSchema), customersController.mergeCustomers);
 router.get('/:id', requireRole('OWNER', 'BILLING_PERSON'), validate(idSchema), customersController.getCustomer);
 router.put('/:id', requireRole('OWNER', 'BILLING_PERSON'), validate(updateSchema), customersController.updateCustomer);
+router.delete('/:id', requireRole('OWNER'), validate(idSchema), customersController.deleteCustomer);
 router.get('/:id/visits', requireRole('OWNER', 'BILLING_PERSON'), validate(visitsSchema), customersController.getVisits);
 
 module.exports = router;

@@ -36,9 +36,19 @@ async function refundInvoice(req, res, next) {
   }
 }
 
+async function deleteInvoice(req, res, next) {
+  try {
+    const data = await invoicesService.deleteInvoice(req.validated.params.id);
+    return res.json({ success: true, data });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   createInvoice,
   listInvoices,
   getInvoice,
-  refundInvoice
+  refundInvoice,
+  deleteInvoice
 };

@@ -36,6 +36,15 @@ async function updateCustomer(req, res, next) {
   }
 }
 
+async function deleteCustomer(req, res, next) {
+  try {
+    const data = await customersService.deleteCustomer(req.validated.params.id);
+    return res.json({ success: true, data });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function getVisits(req, res, next) {
   try {
     const data = await customersService.getVisits(req.validated.params.id, req.validated.query);
@@ -86,6 +95,7 @@ module.exports = {
   createCustomer,
   getCustomer,
   updateCustomer,
+  deleteCustomer,
   getVisits,
   getLapsedCustomers,
   getBirthdays,

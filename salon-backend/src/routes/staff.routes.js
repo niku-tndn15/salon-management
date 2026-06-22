@@ -89,6 +89,7 @@ router.get('/compare', requireRole('OWNER'), validate(compareSchema), staffContr
 router.get('/:id', requireRole('OWNER', 'STAFF'), validate(idSchema), staffController.getStaff);
 router.put('/:id', requireRole('OWNER'), validate(updateSchema), staffController.updateStaff);
 router.patch('/:id/status', requireRole('OWNER'), validate(statusSchema), staffController.updateStaffStatus);
+router.delete('/:id', requireRole('OWNER'), validate(idSchema), staffController.deleteStaff);
 router.get('/:id/commission-history', requireRole('OWNER'), validate(idSchema), staffController.getCommissionHistory);
 router.put('/:id/commission', requireRole('OWNER'), validate(commissionSchema), staffController.updateCommission);
 router.get('/:id/performance', requireRole('OWNER', 'STAFF'), validate(rangeSchema), staffController.getPerformance);

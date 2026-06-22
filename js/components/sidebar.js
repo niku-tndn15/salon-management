@@ -5,6 +5,7 @@
 
 import { ROLES } from '../auth.js';
 import { escapeHtml } from '../utils.js';
+import { getCachedSalonName } from '../db.js';
 
 const NAV_ITEMS = [
   {
@@ -41,7 +42,7 @@ const NAV_ITEMS = [
     href:  '#/my-performance',
     label: 'My Performance',
     icon:  'bar-chart-2',
-    roles: [ROLES.OWNER, ROLES.STAFF],
+    roles: [ROLES.STAFF],
   },
   {
     href:  '#/settings',
@@ -61,6 +62,7 @@ export function renderSidebar(user) {
   const filtered    = NAV_ITEMS.filter(item => item.roles.includes(role));
   const avatarText  = _initials(user?.name ?? 'U');
   const roleLabel   = _roleLabel(role);
+  const salonName   = getCachedSalonName();
 
   sidebar.innerHTML = `
     <!-- Brand -->
@@ -68,7 +70,7 @@ export function renderSidebar(user) {
       <span class="sidebar__brand-icon">
         <i data-lucide="scissors"></i>
       </span>
-      <span class="sidebar__brand-name">Salon.</span>
+      <span class="sidebar__brand-name" id="sidebar-salon-name">${escapeHtml(salonName)}</span>
     </a>
 
     <!-- Navigation -->
@@ -114,6 +116,13 @@ export function renderSidebar(user) {
       document.dispatchEvent(new Event('salon:logout'));
     });
   }
+
+  // Keep the brand name in sync when the salon profile is saved
+  document.addEventListener('salon:profile-updated', e => {
+    const nameEl = document.getElementById('sidebar-salon-name');
+    const newName = e.detail?.name;
+    if (nameEl && newName) nameEl.textContent = newName;
+  });
 
   // Update active link on hash change
   window.addEventListener('hashchange', () => {

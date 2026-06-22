@@ -215,6 +215,42 @@ async function updateStaffStatus(id, data) {
   }
 }
 
+async function deleteStaff(id) {
+  const client = await db.getClient().catch((err) => ensureDatabaseConfigured(err));
+
+  try {
+    await client.query('BEGIN');
+
+    const existing = await client.query('SELECT id, user_id FROM staff WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+      throw httpError(404, 'NOT_FOUND', 'Staff profile not found');
+    }
+    const staff = existing.rows[0];
+
+    // Preserve invoice history: line items keep their professional name snapshot,
+    // so just release the FK link before removing the staff row.
+    await client.query('UPDATE invoice_line_items SET professional_id = NULL WHERE professional_id = $1', [id]);
+    await client.query('DELETE FROM commission_rate_history WHERE staff_id = $1', [id]);
+    await client.query('DELETE FROM staff WHERE id = $1', [id]);
+
+    // Remove the linked STAFF login account, if any.
+    if (staff.user_id) {
+      await client.query('DELETE FROM users WHERE id = $1', [staff.user_id]);
+    }
+
+    await client.query('COMMIT');
+    return { message: 'Staff member deleted successfully', id };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    if (err.code === '23503') {
+      throw httpError(409, 'CONFLICT', 'Cannot delete staff member with linked records');
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 async function getCommissionHistory(id) {
   try {
     const result = await db.query(
@@ -384,6 +420,7 @@ module.exports = {
   createStaff,
   updateStaff,
   updateStaffStatus,
+  deleteStaff,
   getCommissionHistory,
   updateCommission,
   getPerformance,

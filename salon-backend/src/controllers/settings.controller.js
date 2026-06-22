@@ -45,10 +45,20 @@ async function updateDiscountStatus(req, res, next) {
   }
 }
 
+async function deleteDiscount(req, res, next) {
+  try {
+    const data = await settingsService.deleteDiscount(req.validated.params.id);
+    return res.json({ success: true, data });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   getSalon,
   updateSalon,
   listDiscounts,
   createDiscount,
-  updateDiscountStatus
+  updateDiscountStatus,
+  deleteDiscount
 };

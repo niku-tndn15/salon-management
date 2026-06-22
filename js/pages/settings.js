@@ -11,6 +11,7 @@ import {
   getDiscountOffers,
   createDiscountOffer,
   updateDiscountOfferStatus,
+  deleteDiscountOffer,
   getUserAccounts,
   createUserAccount,
   updateUserAccountStatus,
@@ -102,7 +103,7 @@ async function _profilePanel(container) {
             <div class="form-group">
               <label class="form-label">Salon Name <span class="required">*</span></label>
               <input class="form-input" name="name" required
-                value="${_esc(p?.name ?? '')}" placeholder="Glamour Studio" />
+                value="${_esc(p?.name ?? '')}" placeholder="Glamour Salon" />
             </div>
             <div class="form-group">
               <label class="form-label">Phone</label>
@@ -311,20 +312,37 @@ async function _offersPanel(container) {
     }
   });
 
-  // Activate / Deactivate
+  // Activate / Deactivate / Delete
   container.querySelector('.offers-table-wrapper')?.addEventListener('click', async e => {
-    const btn = e.target.closest('[data-offer-toggle]');
-    if (!btn) return;
-    const id      = btn.dataset.offerToggle;
-    const current = btn.dataset.offerStatus;
-    const next    = current === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    try {
-      await updateDiscountOfferStatus(id, next);
-      toast.success('Updated', `Offer ${next === 'ACTIVE' ? 'activated' : 'deactivated'}.`);
-      await _offersPanel(container);
-      if (window.lucide) window.lucide.createIcons({ nodes: [container] });
-    } catch {
-      toast.error('Error', 'Failed to update offer status.');
+    const toggleBtn = e.target.closest('[data-offer-toggle]');
+    if (toggleBtn) {
+      const id      = toggleBtn.dataset.offerToggle;
+      const current = toggleBtn.dataset.offerStatus;
+      const next    = current === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      try {
+        await updateDiscountOfferStatus(id, next);
+        toast.success('Updated', `Offer ${next === 'ACTIVE' ? 'activated' : 'deactivated'}.`);
+        await _offersPanel(container);
+        if (window.lucide) window.lucide.createIcons({ nodes: [container] });
+      } catch {
+        toast.error('Error', 'Failed to update offer status.');
+      }
+      return;
+    }
+
+    const delBtn = e.target.closest('[data-offer-delete]');
+    if (delBtn) {
+      const id   = delBtn.dataset.offerDelete;
+      const name = delBtn.dataset.offerName || 'this offer';
+      if (!confirm(`Delete discount offer "${name}" permanently? This cannot be undone.`)) return;
+      try {
+        await deleteDiscountOffer(id);
+        toast.success('Deleted', `Offer "${name}" deleted.`);
+        await _offersPanel(container);
+        if (window.lucide) window.lucide.createIcons({ nodes: [container] });
+      } catch (err) {
+        toast.error('Error', err?.message || 'Failed to delete offer.');
+      }
     }
   });
 }
@@ -357,12 +375,21 @@ function _offersTableHTML(offers) {
               </span>
             </td>
             <td>
-              <button class="btn btn--ghost btn--sm"
-                data-offer-toggle="${o.id}"
-                data-offer-status="${o.status}"
-                type="button">
-                ${o.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-              </button>
+              <div style="display:flex;gap:var(--sp-2);">
+                <button class="btn btn--ghost btn--sm"
+                  data-offer-toggle="${o.id}"
+                  data-offer-status="${o.status}"
+                  type="button">
+                  ${o.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                </button>
+                <button class="btn btn--ghost btn--sm"
+                  data-offer-delete="${o.id}"
+                  data-offer-name="${_escAttr(o.name)}"
+                  type="button"
+                  style="color:var(--clr-danger);border-color:var(--clr-danger);">
+                  Delete
+                </button>
+              </div>
             </td>
           </tr>
         `).join('')}

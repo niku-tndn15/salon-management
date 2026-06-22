@@ -47,4 +47,31 @@ describe('M3 catalog routes', () => {
     expect(res.status).toBe(503);
     expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
   });
+
+  it('blocks BILLING_PERSON from deleting a service (owner-only)', async () => {
+    const res = await request(app)
+      .delete('/api/catalog/services/11111111-1111-1111-1111-111111111111')
+      .set('Authorization', `Bearer ${tokenFor('BILLING_PERSON')}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('validates the service id on delete', async () => {
+    const res = await request(app)
+      .delete('/api/catalog/services/not-a-uuid')
+      .set('Authorization', `Bearer ${tokenFor()}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns DB_NOT_CONFIGURED when deleting a service without DATABASE_URL', async () => {
+    const res = await request(app)
+      .delete('/api/catalog/services/11111111-1111-1111-1111-111111111111')
+      .set('Authorization', `Bearer ${tokenFor()}`);
+
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
+  });
 });
