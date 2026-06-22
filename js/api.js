@@ -3,7 +3,7 @@
  * The app keeps Dexie as its local cache; this module owns HTTP concerns.
  */
 
-const DEFAULT_API_BASE_URL = 'http://localhost:3000/api';
+const DEFAULT_API_BASE_URL = 'https://salon-management-9b29.onrender.com/api';
 const TOKEN_KEY = 'salon_token';
 const API_BASE_KEY = 'salon_api_base_url';
 
