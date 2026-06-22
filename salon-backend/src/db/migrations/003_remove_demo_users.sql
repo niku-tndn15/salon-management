@@ -13,15 +13,37 @@ BEGIN
     RAISE EXCEPTION 'Owner account not found — cannot run cleanup migration safely.';
   END IF;
 
-  -- Reassign invoices created by demo billing accounts to owner
+  -- Reassign ALL records owned by / referencing demo accounts to the owner
+  -- before deleting them, so no NOT NULL foreign keys are violated.
+
+  -- invoices.created_by (NOT NULL)
   UPDATE invoices
   SET created_by = owner_id
-  WHERE created_by IN (SELECT id FROM users WHERE username IN ('billing1', 'billing2'));
+  WHERE created_by IN (SELECT id FROM users WHERE username IN ('billing1', 'billing2', 'ravi'));
 
-  -- Reassign customers created by demo billing accounts to owner
+  -- customers.created_by (NOT NULL) and customers.updated_by (nullable)
   UPDATE customers
   SET created_by = owner_id
-  WHERE created_by IN (SELECT id FROM users WHERE username IN ('billing1', 'billing2'));
+  WHERE created_by IN (SELECT id FROM users WHERE username IN ('billing1', 'billing2', 'ravi'));
+
+  UPDATE customers
+  SET updated_by = owner_id
+  WHERE updated_by IN (SELECT id FROM users WHERE username IN ('billing1', 'billing2', 'ravi'));
+
+  -- services.created_by (NOT NULL)
+  UPDATE services
+  SET created_by = owner_id
+  WHERE created_by IN (SELECT id FROM users WHERE username IN ('billing1', 'billing2', 'ravi'));
+
+  -- commission_rate_history.changed_by (NOT NULL)
+  UPDATE commission_rate_history
+  SET changed_by = owner_id
+  WHERE changed_by IN (SELECT id FROM users WHERE username IN ('billing1', 'billing2', 'ravi'));
+
+  -- refunds.processed_by (NOT NULL) — a refund was processed by a demo account on live
+  UPDATE refunds
+  SET processed_by = owner_id
+  WHERE processed_by IN (SELECT id FROM users WHERE username IN ('billing1', 'billing2', 'ravi'));
 
   -- Unlink staff login for ravi (staff profile stays, login is removed)
   UPDATE staff
