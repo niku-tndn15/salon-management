@@ -189,7 +189,7 @@ Conventions
 |----|-------|-------|----------|------|
 | ERR-01 | DB down behavior | API with DB unreachable | `503 DB_UNAVAILABLE` (not a 500 leak) | Auto |
 | ERR-02 | No internal leak on 500 | Trigger server error | body message = "Internal server error", no stack | API |
-| ERR-03 | SQL injection attempt | Search params like `' OR 1=1 --` | treated as literal value (parameterized); no injection | API |
+| ERR-03 | SQL injection attempt | Search params like `' OR 1=1 --`, `'; DROP TABLE users; --` | Blocked `403` at Cloudflare edge (Render CDN WAF) AND parameterized in-app as backstop; `users` table intact (defense in depth) | API ✅verified |
 | ERR-04 | CORS disallowed origin | Request from non-allowlisted Origin | blocked by CORS | API |
 | ERR-05 | Migrations idempotent | Re-run `npm run db:migrate` | applied ones skipped; no errors | API |
 
