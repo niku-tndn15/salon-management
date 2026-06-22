@@ -554,9 +554,9 @@ function _openEditCustomerModal(container, customer) {
             <input class="form-input" id="ec-name" type="text" value="${_escAttr(customer.name)}" />
           </div>
           <div class="form-group">
-            <label class="form-label">Phone</label>
-            <input class="form-input" id="ec-phone" type="tel" value="${_escAttr(customer.phone)}" readonly
-                   style="background:var(--clr-bg);color:var(--clr-text-muted);" />
+            <label class="form-label">Phone <span class="required">*</span></label>
+            <input class="form-input" id="ec-phone" type="tel" maxlength="10"
+                   value="${_escAttr(customer.phone)}" placeholder="10-digit mobile" />
           </div>
         </div>
         <div class="form-grid-2">
@@ -603,15 +603,25 @@ function _openEditCustomerModal(container, customer) {
   });
 
   overlay.querySelector('#ec-save').addEventListener('click', async () => {
-    const name = document.getElementById('ec-name').value.trim();
+    const name  = document.getElementById('ec-name').value.trim();
+    const phone = document.getElementById('ec-phone').value.trim();
     if (!name) { toast.error('Name is required.'); return; }
+    if (!/^\d{10}$/.test(phone)) { toast.error('Enter a valid 10-digit phone number.'); return; }
+
+    if (phone !== customer.phone) {
+      const existing = await findCustomerByPhone(phone);
+      if (existing && String(existing.id) !== String(customer.id)) {
+        toast.error('Another customer with this phone number already exists.');
+        return;
+      }
+    }
 
     const saveBtn = overlay.querySelector('#ec-save');
     saveBtn.disabled = true;
     try {
       await updateCustomer(customer.id, {
         name,
-        phone:          customer.phone,
+        phone,
         gender:         document.getElementById('ec-gender').value || null,
         dateOfBirth:    document.getElementById('ec-dob').value    || customer.dateOfBirth || null,
         referralSource: document.getElementById('ec-ref').value    || null,

@@ -25,7 +25,7 @@ const customerBody = baseCustomerBody.refine((body) => new Date(body.date_of_bir
   message: 'Date of birth must be in the past'
 });
 
-const updateCustomerBody = baseCustomerBody.omit({ phone: true }).refine((body) => new Date(body.date_of_birth) < new Date(), {
+const updateCustomerBody = baseCustomerBody.refine((body) => new Date(body.date_of_birth) < new Date(), {
   path: ['date_of_birth'],
   message: 'Date of birth must be in the past'
 });

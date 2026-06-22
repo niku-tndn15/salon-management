@@ -168,18 +168,20 @@ async function updateCustomer(id, data, user) {
     const result = await db.query(
       `UPDATE customers
        SET name = $1,
-           gender = $2,
-           date_of_birth = $3,
-           referral_source = $4,
-           notes = $5,
+           phone = $2,
+           gender = $3,
+           date_of_birth = $4,
+           referral_source = $5,
+           notes = $6,
            updated_at = NOW(),
-           updated_by = $6
-       WHERE id = $7
+           updated_by = $7
+       WHERE id = $8
        RETURNING *`,
-      [data.name, data.gender, data.date_of_birth, data.referral_source, data.notes || null, user.id, id]
+      [data.name, data.phone, data.gender, data.date_of_birth, data.referral_source, data.notes || null, user.id, id]
     );
     return result.rows[0];
   } catch (err) {
+    if (err.code === '23505') throw httpError(409, 'CONFLICT', 'Another customer already uses this phone number');
     ensureDatabaseConfigured(err);
   }
 }

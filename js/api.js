@@ -228,12 +228,23 @@ export const api = {
       const res = await apiFetch('/staff', { method: 'POST', body: payload });
       return res.data;
     },
+    async update(id, payload) {
+      const res = await apiFetch(`/staff/${id}`, { method: 'PUT', body: payload });
+      return res.data.staff;
+    },
     async updateStatus(id, status, payload = {}) {
       const res = await apiFetch(`/staff/${id}/status`, {
         method: 'PATCH',
         body: { status, ...payload },
       });
       return res.data.staff;
+    },
+    async updateCommission(id, commissionPct) {
+      const res = await apiFetch(`/staff/${id}/commission`, {
+        method: 'PUT',
+        body: { commission_pct: commissionPct },
+      });
+      return res.data;
     },
     async delete(id) {
       const res = await apiFetch(`/staff/${id}`, { method: 'DELETE' });

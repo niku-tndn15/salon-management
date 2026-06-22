@@ -151,6 +151,7 @@ function _staffFromApi(s) {
     name: s.name,
     phone: s.phone,
     designation: s.designation,
+    joinDate: _toDateOnly(s.join_date, null),
     commissionPct: Number(s.commission_pct ?? s.current_rate ?? 0),
     status: s.status,
     syncStatus: 'SYNCED',
@@ -796,6 +797,47 @@ export async function updateStaffStatus(id, status, payload = {}) {
     ?? await db.users.filter(u => u.name === staff?.name && u.role === 'STAFF').first();
   if (user) await db.users.update(user.id, { status });
   return staff ? { ...staff, status } : null;
+}
+
+export async function updateStaff(id, data) {
+  if (_apiEnabled()) {
+    const staff = await api.staff.update(id, {
+      name:        data.name,
+      phone:       data.phone,
+      designation: data.designation,
+      join_date:   _toDateOnly(data.joinDate) || _toDateOnly(new Date().toISOString()),
+    });
+    const mapped = _staffFromApi(staff);
+    await db.staff.put(mapped).catch(err => console.warn('Staff cache update failed:', err));
+    return mapped;
+  }
+
+  await db.staff.update(id, {
+    name:        data.name,
+    phone:       data.phone,
+    designation: data.designation,
+    syncStatus:  'PENDING',
+    updatedAt:   new Date().toISOString(),
+  });
+  return db.staff.get(id);
+}
+
+export async function updateStaffCommission(id, commissionPct) {
+  if (_apiEnabled()) {
+    const result = await api.staff.updateCommission(id, Number(commissionPct));
+    if (result?.staff) {
+      await db.staff.put(_staffFromApi(result.staff)).catch(() => {});
+    }
+    // Refresh local commission history cache from the server.
+    try {
+      const history = await api.staff.commissionHistory(id);
+      const mapped = history.map(_commissionFromApi);
+      await db.commissionRateHistory.where('staffId').equals(id).delete().catch(() => {});
+      if (mapped.length) await db.commissionRateHistory.bulkPut(mapped);
+    } catch { /* non-fatal cache refresh */ }
+    return result;
+  }
+  return null;
 }
 
 export async function deleteStaffMember(id) {

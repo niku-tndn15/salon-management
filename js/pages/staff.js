@@ -5,7 +5,7 @@
  */
 
 import { registerRoute } from '../router.js';
-import db, { createStaffMember, getStaffDirectory, getStaffPerformance, getCommissionRateOnDate, updateStaffStatus, deleteStaffMember } from '../db.js';
+import db, { createStaffMember, getStaffDirectory, getStaffPerformance, getCommissionRateOnDate, updateStaff, updateStaffCommission, updateStaffStatus, deleteStaffMember } from '../db.js';
 import { currentUser } from '../auth.js';
 import toast from '../components/toast.js';
 
@@ -365,9 +365,9 @@ function _openEditStaffModal(staff, rates) {
           <input class="form-input" id="es-name" type="text" value="${_esc(staff.name)}" />
         </div>
         <div class="form-group">
-          <label class="form-label">Phone</label>
-          <input class="form-input" type="tel" value="${_esc(staff.phone)}" readonly
-                 style="background:var(--clr-bg);color:var(--clr-text-muted);" />
+          <label class="form-label">Phone <span class="required">*</span></label>
+          <input class="form-input" id="es-phone" type="tel" maxlength="10"
+                 value="${_esc(staff.phone)}" placeholder="10-digit mobile" />
         </div>
         <div class="form-group">
           <label class="form-label">Designation <span class="required">*</span></label>
@@ -413,10 +413,12 @@ function _openEditStaffModal(staff, rates) {
 
   overlay.querySelector('#es-save').addEventListener('click', async () => {
     const name  = document.getElementById('es-name').value.trim();
+    const phone = document.getElementById('es-phone').value.trim();
     const desig = document.getElementById('es-desig').value.trim();
     const newPct = parseFloat(document.getElementById('es-comm').value);
 
     if (!name)                       { toast.error('Name is required.'); return; }
+    if (!/^\d{10}$/.test(phone))     { toast.error('Enter a valid 10-digit phone.'); return; }
     if (!desig)                      { toast.error('Designation is required.'); return; }
     if (isNaN(newPct) || newPct < 0 || newPct > 100) { toast.error('Commission must be 0–100.'); return; }
 
@@ -424,21 +426,29 @@ function _openEditStaffModal(staff, rates) {
     btn.disabled = true;
 
     try {
-      await db.staff.update(staff.id, { name, designation: desig, syncStatus: 'PENDING' });
+      await updateStaff(staff.id, {
+        name,
+        phone,
+        designation: desig,
+        joinDate: staff.joinDate,
+      });
 
       if (newPct !== currentPct) {
-        const today    = _today();
-        const tomorrow = _addDays(today, 1);
-
-        if (current) {
-          await db.commissionRateHistory.update(current.id, { effectiveTo: today });
+        const result = await updateStaffCommission(staff.id, newPct);
+        if (!result) {
+          // Local-only fallback (no backend): mirror the effective-tomorrow logic.
+          const today    = _today();
+          const tomorrow = _addDays(today, 1);
+          if (current) {
+            await db.commissionRateHistory.update(current.id, { effectiveTo: today });
+          }
+          await db.commissionRateHistory.add({
+            staffId: staff.id, commissionPct: newPct,
+            effectiveFrom: tomorrow, effectiveTo: null,
+          });
         }
-        await db.commissionRateHistory.add({
-          staffId: staff.id, commissionPct: newPct,
-          effectiveFrom: tomorrow, effectiveTo: null,
-        });
-
-        toast.success(`Commission updated. New rate (${newPct}%) effective from ${_fmtDate(tomorrow)}.`);
+        const eff = result?.effective_from ? _fmtDate(result.effective_from) : _fmtDate(_addDays(_today(), 1));
+        toast.success(`Commission updated. New rate (${newPct}%) effective from ${eff}.`);
       } else {
         toast.success('Staff details updated.');
       }
@@ -448,8 +458,9 @@ function _openEditStaffModal(staff, rates) {
       const view = document.getElementById('staff-view');
       if (view) _renderDirectory(view);
 
-    } catch {
-      toast.error('Failed to update staff member.');
+    } catch (err) {
+      console.error('Failed to update staff member:', err);
+      toast.error(err?.message || 'Failed to update staff member.');
       btn.disabled = false;
     }
   });

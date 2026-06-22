@@ -64,7 +64,15 @@
 .catalog-card__meta svg { width: 12px; height: 12px; stroke: currentColor; }
 .catalog-card__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--sp-2);
+  margin-top: auto;
+}
+.catalog-card__actions .btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 /* Service form (inside modal) */
