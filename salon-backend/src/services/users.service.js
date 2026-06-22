@@ -28,7 +28,7 @@ function toPublicUser(row) {
 }
 
 function temporaryPassword() {
-  return crypto.randomBytes(5).toString('base64').replace(/[^A-Za-z0-9]/g, '').slice(0, 10) || crypto.randomBytes(5).toString('hex');
+  return crypto.randomBytes(8).toString('hex');
 }
 
 async function listUsers() {

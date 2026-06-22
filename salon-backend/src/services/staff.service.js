@@ -19,7 +19,7 @@ function tomorrowISO() {
 }
 
 function randomPassword() {
-  return crypto.randomBytes(4).toString('hex');
+  return crypto.randomBytes(8).toString('hex');
 }
 
 function baseUsername(name, phone) {

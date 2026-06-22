@@ -1,12 +1,10 @@
 -- Baseline seed data for local development and Supabase smoke testing.
--- Password for seeded users: Admin@123
+-- Only the owner account is seeded. Billing and staff accounts are created by the owner at runtime.
+-- Password for owner: Admin@123
 
 DO $$
 DECLARE
   owner_id UUID;
-  billing1_id UUID;
-  billing2_id UUID;
-  staff_user_id UUID;
   hair_id UUID;
   skin_id UUID;
   nails_id UUID;
@@ -28,33 +26,6 @@ BEGIN
       status = 'ACTIVE',
       updated_at = NOW()
   RETURNING id INTO owner_id;
-
-  INSERT INTO users (username, password_hash, full_name, role, force_password_change)
-  VALUES ('billing1', '$2a$12$kSbTKQXsz2oNHf9V/RUXDOjzSATJwVm7Sh27T4NOdG.4w2Ko3P86m', 'Billing User One', 'BILLING_PERSON', FALSE)
-  ON CONFLICT (username) DO UPDATE
-  SET full_name = EXCLUDED.full_name,
-      role = EXCLUDED.role,
-      status = 'ACTIVE',
-      updated_at = NOW()
-  RETURNING id INTO billing1_id;
-
-  INSERT INTO users (username, password_hash, full_name, role, force_password_change)
-  VALUES ('billing2', '$2a$12$kSbTKQXsz2oNHf9V/RUXDOjzSATJwVm7Sh27T4NOdG.4w2Ko3P86m', 'Billing User Two', 'BILLING_PERSON', FALSE)
-  ON CONFLICT (username) DO UPDATE
-  SET full_name = EXCLUDED.full_name,
-      role = EXCLUDED.role,
-      status = 'ACTIVE',
-      updated_at = NOW()
-  RETURNING id INTO billing2_id;
-
-  INSERT INTO users (username, password_hash, full_name, role, force_password_change)
-  VALUES ('ravi', '$2a$12$kSbTKQXsz2oNHf9V/RUXDOjzSATJwVm7Sh27T4NOdG.4w2Ko3P86m', 'Ravi Kumar', 'STAFF', FALSE)
-  ON CONFLICT (username) DO UPDATE
-  SET full_name = EXCLUDED.full_name,
-      role = EXCLUDED.role,
-      status = 'ACTIVE',
-      updated_at = NOW()
-  RETURNING id INTO staff_user_id;
 
   INSERT INTO service_categories (name) VALUES ('Hair')
   ON CONFLICT (name) DO NOTHING;
@@ -99,7 +70,7 @@ BEGIN
 
   INSERT INTO staff (user_id, name, phone, designation, commission_pct, join_date)
   VALUES
-    (staff_user_id, 'Ravi Kumar', '9000000001', 'Senior Hair Stylist', 12.50, CURRENT_DATE - INTERVAL '2 years'),
+    (NULL, 'Ravi Kumar', '9000000001', 'Senior Hair Stylist', 12.50, CURRENT_DATE - INTERVAL '2 years'),
     (NULL, 'Anita Sharma', '9000000002', 'Skin Specialist', 10.00, CURRENT_DATE - INTERVAL '18 months'),
     (NULL, 'Meera Patel', '9000000003', 'Nail Artist', 8.00, CURRENT_DATE - INTERVAL '1 year'),
     (NULL, 'Karan Mehta', '9000000004', 'Spa Therapist', 9.50, CURRENT_DATE - INTERVAL '10 months')
@@ -130,7 +101,7 @@ BEGIN
       updated_at = NOW();
 
   INSERT INTO customers (name, phone, gender, date_of_birth, referral_source, notes, created_by)
-  SELECT customer_name, phone, gender, date_of_birth, referral_source, notes, billing1_id
+  SELECT customer_name, phone, gender, date_of_birth, referral_source, notes, owner_id
   FROM (
     VALUES
       ('Priya Nair', '8880000001', 'FEMALE', DATE '1994-03-12', 'INSTAGRAM', 'Prefers evening appointments'),
@@ -177,7 +148,7 @@ BEGIN
       'SAL-' || TO_CHAR(CURRENT_DATE - ((gs - 1) % 30), 'YYYYMM') || '-' || LPAD(gs::TEXT, 4, '0') AS invoice_number,
       CURRENT_DATE - ((gs - 1) % 30) AS invoice_date,
       c.id AS customer_id,
-      CASE WHEN gs % 2 = 0 THEN billing1_id ELSE billing2_id END AS created_by,
+      owner_id AS created_by,
       CASE WHEN gs % 3 = 0 THEN 'CARD' WHEN gs % 3 = 1 THEN 'UPI' ELSE 'CASH' END AS payment_method,
       svc.id AS service_id,
       svc.name AS service_name,

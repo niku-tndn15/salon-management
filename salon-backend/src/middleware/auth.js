@@ -19,7 +19,7 @@ async function authenticate(req, res, next) {
 
   let payload;
   try {
-    payload = jwt.verify(token, env.JWT_SECRET);
+    payload = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] });
   } catch {
     return res.status(401).json({
       success: false,

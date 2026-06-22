@@ -19,7 +19,11 @@ const { apiRateLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  frameguard: { action: 'deny' },
+  contentSecurityPolicy: false
+}));
 app.use(cors({
   origin(origin, callback) {
     if (!origin || env.allowedOrigins.includes(origin)) {

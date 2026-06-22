@@ -100,11 +100,6 @@ async function _renderLogin() {
             Sign in
           </button>
 
-          <p style="font-size:var(--text-xs);color:var(--clr-text-muted);text-align:center;margin-top:-8px;">
-            Backend demo: <strong>owner</strong> / <strong>billing1</strong> / <strong>ravi</strong> | password: <strong>Admin@123</strong>
-            <br>Offline fallback: owner / billing / anita / ravi | demo123
-          </p>
-
         </form>
       </div>
     </div>

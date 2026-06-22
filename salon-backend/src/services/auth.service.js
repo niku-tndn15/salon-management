@@ -79,7 +79,7 @@ async function login({ username, password }) {
     }
 
     if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      throw httpError(401, 'UNAUTHORIZED', `Account locked until ${new Date(user.locked_until).toISOString()}`);
+      throw httpError(401, 'UNAUTHORIZED', GENERIC_LOGIN_ERROR);
     }
 
     const passwordMatches = await bcrypt.compare(password, user.password_hash);
@@ -100,7 +100,7 @@ async function login({ username, password }) {
     );
 
     const publicUser = toPublicUser(user);
-    const token = jwt.sign(publicUser, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
+    const token = jwt.sign(publicUser, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN, algorithm: 'HS256' });
 
     return {
       token,

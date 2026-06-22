@@ -8,7 +8,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().min(1).optional(),
-  JWT_SECRET: z.string().min(32).default('development-only-secret-change-before-production'),
+  JWT_SECRET: z.string().min(64).default('development-only-secret-not-for-production-change-this-before-deploying-app'),
   JWT_EXPIRES_IN: z.string().default('8h'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
   ALLOWED_ORIGINS: z.string().default('http://localhost:5500,http://127.0.0.1:5500'),
@@ -28,7 +28,7 @@ const env = {
   allowedOrigins: parsed.data.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
 };
 
-if (env.NODE_ENV === 'production' && env.JWT_SECRET === 'development-only-secret-change-before-production') {
+if (env.NODE_ENV === 'production' && env.JWT_SECRET === 'development-only-secret-not-for-production-change-this-before-deploying-app') {
   throw new Error('JWT_SECRET must be set in production');
 }
 
