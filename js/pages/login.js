@@ -158,33 +158,33 @@ async function _handleSubmit(e) {
     const backendLogin = await _tryBackendLogin(username, password);
     if (backendLogin.handled) return;
 
+    // The backend could not be reached. Fall back to local cache ONLY if valid
+    // offline credentials exist on this device — otherwise tell the user it's a
+    // connectivity problem, never "invalid password" (which is misleading and
+    // is what made fresh PCs fail even with the correct password).
     const user = await db.users.where('username').equals(username).first();
 
-    if (!user) {
-      _handleFailure(username, 'Invalid username or password.');
+    if (user && user.status === 'ACTIVE' && verifyPassword(password, user.passwordHash)) {
+      // ── Offline success ──
+      resetLockout(username);
+
+      const sessionUser = { id: user.id, name: user.name, username: user.username, role: user.role };
+      clearToken();
+      setSession(sessionUser, 'local');
+
+      toast.success('Signed in (offline)', `Welcome back, ${user.name.split(' ')[0]}!`);
+      document.dispatchEvent(new CustomEvent('salon:login', { detail: { user: sessionUser } }));
+      navigate(landingRoute(user.role));
       return;
     }
 
-    if (user.status !== 'ACTIVE') {
+    if (user && user.status !== 'ACTIVE') {
       _showError('This account has been deactivated. Contact the salon owner.');
       return;
     }
 
-    if (!verifyPassword(password, user.passwordHash)) {
-      _handleFailure(username, null);
-      return;
-    }
-
-    // ── Success ──
-    resetLockout(username);
-
-    const sessionUser = { id: user.id, name: user.name, username: user.username, role: user.role };
-    clearToken();
-    setSession(sessionUser, 'local');
-
-    toast.success('Signed in', `Welcome back, ${user.name.split(' ')[0]}!`);
-    document.dispatchEvent(new CustomEvent('salon:login', { detail: { user: sessionUser } }));
-    navigate(landingRoute(user.role));
+    // Server unreachable and no verified offline credentials on this device.
+    _showError('Can’t reach the server. Check your internet connection and try again.');
 
   } catch (err) {
     console.error('Login error:', err);
@@ -218,7 +218,14 @@ async function _tryBackendLogin(username, password) {
     }
 
     if (err instanceof APIError) {
-      _showError(err.message || 'Invalid username or password.');
+      // 401 = wrong credentials → count down the client-side attempts.
+      // Anything else (e.g. 423 ACCOUNT_LOCKED, 429, 5xx) → show as-is, do not
+      // penalise the user's attempt counter for a server-side condition.
+      if (err.status === 401) {
+        _handleFailure(username, null);
+      } else {
+        _showError(err.message || 'Login failed. Please try again.');
+      }
       return { handled: true };
     }
 

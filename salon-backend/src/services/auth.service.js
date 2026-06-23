@@ -79,7 +79,12 @@ async function login({ username, password }) {
     }
 
     if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      throw httpError(401, 'UNAUTHORIZED', GENERIC_LOGIN_ERROR);
+      const minutesLeft = Math.max(1, Math.ceil((new Date(user.locked_until) - new Date()) / 60000));
+      throw httpError(
+        423,
+        'ACCOUNT_LOCKED',
+        `Account temporarily locked after too many failed attempts. Try again in ${minutesLeft} minute${minutesLeft === 1 ? '' : 's'}.`
+      );
     }
 
     const passwordMatches = await bcrypt.compare(password, user.password_hash);
