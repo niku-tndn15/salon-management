@@ -38,6 +38,13 @@ describe('M2 auth routes', () => {
     expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
   });
 
+  it('exposes the dummy-login flag on /api/auth/config', async () => {
+    const res = await request(app).get('/api/auth/config');
+
+    expect(res.status).toBe(200);
+    expect(typeof res.body.data.dummyLoginEnabled).toBe('boolean');
+  });
+
   it('returns DB_NOT_CONFIGURED for dummy-login when DATABASE_URL is absent', async () => {
     const res = await request(app).post('/api/auth/dummy-login');
 

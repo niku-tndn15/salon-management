@@ -1,4 +1,12 @@
 const authService = require('../services/auth.service');
+const env = require('../config/env');
+
+function config(req, res) {
+  return res.json({
+    success: true,
+    data: { dummyLoginEnabled: env.enableDummyLogin }
+  });
+}
 
 async function login(req, res, next) {
   try {
@@ -47,6 +55,7 @@ async function changePassword(req, res, next) {
 }
 
 module.exports = {
+  config,
   login,
   dummyLogin,
   logout,

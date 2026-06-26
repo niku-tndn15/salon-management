@@ -100,15 +100,17 @@ async function _renderLogin() {
             Sign in
           </button>
 
-          <div class="login-form__divider"><span>or</span></div>
+          <div id="dummy-login-wrap" hidden>
+            <div class="login-form__divider"><span>or</span></div>
 
-          <button type="button" id="dummy-login" class="btn btn--secondary login-form__submit">
-            Dummy login (Owner) · Beta
-          </button>
-          <p class="login-form__beta-note">
-            Instant owner access for beta testing — no credentials needed.
-            Your IP address is recorded so we can count testers.
-          </p>
+            <button type="button" id="dummy-login" class="btn btn--secondary login-form__submit">
+              Dummy login (Owner) · Beta
+            </button>
+            <p class="login-form__beta-note">
+              Instant owner access for beta testing — no credentials needed.
+              Your IP address is recorded so we can count testers.
+            </p>
+          </div>
 
         </form>
       </div>
@@ -118,6 +120,20 @@ async function _renderLogin() {
   if (window.lucide) window.lucide.createIcons();
 
   _wireForm();
+  _maybeShowDummyLogin();
+}
+
+// Reveal the beta dummy-login button only if the backend says it's enabled.
+// Fail-closed: any error (flag off, old backend, network down) leaves it hidden.
+async function _maybeShowDummyLogin() {
+  try {
+    const { dummyLoginEnabled } = await api.auth.config();
+    if (dummyLoginEnabled) {
+      document.getElementById('dummy-login-wrap')?.removeAttribute('hidden');
+    }
+  } catch {
+    /* keep hidden */
+  }
 }
 
 // ── Form logic ────────────────────────────────────────────────────────────────

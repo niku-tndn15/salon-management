@@ -13,7 +13,11 @@ const envSchema = z.object({
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
   ALLOWED_ORIGINS: z.string().default('http://localhost:5500,http://127.0.0.1:5500'),
   LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
-  LOGIN_WINDOW_MINUTES: z.coerce.number().int().positive().default(15)
+  LOGIN_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+  // Beta "Dummy login" kill switch. Set to 'false' to disable instantly
+  // without a code change. Explicit string compare so a literal 'false'
+  // is never coerced to true.
+  ENABLE_DUMMY_LOGIN: z.enum(['true', 'false']).default('true')
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -25,7 +29,8 @@ if (!parsed.success) {
 
 const env = {
   ...parsed.data,
-  allowedOrigins: parsed.data.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
+  allowedOrigins: parsed.data.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean),
+  enableDummyLogin: parsed.data.ENABLE_DUMMY_LOGIN === 'true'
 };
 
 if (env.NODE_ENV === 'production' && env.JWT_SECRET === 'development-only-secret-not-for-production-change-this-before-deploying-app') {
