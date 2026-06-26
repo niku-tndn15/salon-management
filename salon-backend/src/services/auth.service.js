@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
@@ -117,6 +118,49 @@ async function login({ username, password }) {
   }
 }
 
+// Beta "Dummy login": create the next sequential owner-role test account
+// (dummy1, dummy2, ...), record the requester's IP / user-agent, and issue a
+// token. Username comes from a server-side integer sequence — never from client
+// input — and every write is parameterized, so there is no injection surface.
+async function dummyLogin({ ipAddress, userAgent } = {}) {
+  try {
+    const seqResult = await db.query("SELECT nextval('dummy_user_seq') AS n");
+    const n = seqResult.rows[0].n;
+    const username = `dummy${n}`;
+    const fullName = `Dummy Tester ${n}`;
+
+    // Give the account an unusable random password so it can never be reached
+    // through the normal username/password form — access is via the button only.
+    const randomSecret = crypto.randomBytes(32).toString('hex');
+    const passwordHash = await bcrypt.hash(randomSecret, env.BCRYPT_ROUNDS);
+
+    const insertResult = await db.query(
+      `INSERT INTO users (username, password_hash, full_name, role, status, force_password_change)
+       VALUES ($1, $2, $3, 'OWNER', 'ACTIVE', FALSE)
+       RETURNING id, username, full_name, role`,
+      [username, passwordHash, fullName]
+    );
+    const user = insertResult.rows[0];
+
+    await db.query(
+      `INSERT INTO dummy_login_events (user_id, username, ip_address, user_agent)
+       VALUES ($1, $2, $3, $4)`,
+      [user.id, username, ipAddress || null, userAgent || null]
+    );
+
+    const publicUser = toPublicUser(user);
+    const token = jwt.sign(publicUser, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN, algorithm: 'HS256' });
+
+    return {
+      token,
+      user: publicUser,
+      forcePasswordChange: false
+    };
+  } catch (err) {
+    ensureDatabaseConfigured(err);
+  }
+}
+
 async function getCurrentUser(userId) {
   try {
     const user = await findActiveUserById(userId);
@@ -170,6 +214,7 @@ async function changePassword(userId, { currentPassword, newPassword }) {
 
 module.exports = {
   login,
+  dummyLogin,
   getCurrentUser,
   changePassword
 };

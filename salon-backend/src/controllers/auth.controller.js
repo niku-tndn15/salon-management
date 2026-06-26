@@ -9,6 +9,18 @@ async function login(req, res, next) {
   }
 }
 
+async function dummyLogin(req, res, next) {
+  try {
+    const data = await authService.dummyLogin({
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent') || null
+    });
+    return res.json({ success: true, data });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function logout(req, res) {
   return res.json({
     success: true,
@@ -36,6 +48,7 @@ async function changePassword(req, res, next) {
 
 module.exports = {
   login,
+  dummyLogin,
   logout,
   me,
   changePassword

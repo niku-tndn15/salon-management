@@ -118,6 +118,10 @@ export const api = {
       });
       return res.data;
     },
+    async dummyLogin() {
+      const res = await apiFetch('/auth/dummy-login', { method: 'POST' });
+      return res.data;
+    },
     async me() {
       const res = await apiFetch('/auth/me');
       return res.data;

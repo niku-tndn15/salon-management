@@ -100,6 +100,16 @@ async function _renderLogin() {
             Sign in
           </button>
 
+          <div class="login-form__divider"><span>or</span></div>
+
+          <button type="button" id="dummy-login" class="btn btn--secondary login-form__submit">
+            Dummy login (Owner) · Beta
+          </button>
+          <p class="login-form__beta-note">
+            Instant owner access for beta testing — no credentials needed.
+            Your IP address is recorded so we can count testers.
+          </p>
+
         </form>
       </div>
     </div>
@@ -128,6 +138,41 @@ function _wireForm() {
 
   // Form submit
   document.getElementById('login-form')?.addEventListener('submit', _handleSubmit);
+
+  // Beta dummy login (instant owner access)
+  document.getElementById('dummy-login')?.addEventListener('click', _handleDummyLogin);
+}
+
+async function _handleDummyLogin() {
+  const btn = document.getElementById('dummy-login');
+  _clearError();
+
+  if (btn) { btn.disabled = true; btn.classList.add('loading'); }
+
+  try {
+    const data = await api.auth.dummyLogin();
+    setToken(data.token);
+    setSession(data.user, data.token);
+
+    try {
+      await hydrateFromBackend();
+    } catch (err) {
+      console.warn('Dummy login succeeded, but cache hydrate failed:', err);
+    }
+
+    toast.success('Dummy login', `You're in as ${data.user.name} (Owner).`);
+    document.dispatchEvent(new CustomEvent('salon:login', { detail: { user: data.user } }));
+    navigate(landingRoute(data.user.role));
+  } catch (err) {
+    console.error('Dummy login error:', err);
+    if (err instanceof APIError && ['NETWORK_ERROR', 'DB_NOT_CONFIGURED', 'DB_UNAVAILABLE'].includes(err.code)) {
+      _showError('Can’t reach the server for dummy login. Check your connection and try again.');
+    } else {
+      _showError(err?.message || 'Dummy login failed. Please try again.');
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+  }
 }
 
 async function _handleSubmit(e) {

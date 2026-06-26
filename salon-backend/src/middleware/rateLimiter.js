@@ -16,6 +16,23 @@ const loginRateLimiter = rateLimit({
   }
 });
 
+// Beta dummy-login: generous enough for real testers, but caps automated
+// button-spam so the database can't be flooded with junk dummy accounts.
+const dummyLoginRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'TOO_MANY_REQUESTS',
+      message: 'Too many dummy logins from this network. Please try again shortly.',
+      details: []
+    }
+  }
+});
+
 const invoiceRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
@@ -66,6 +83,7 @@ const apiRateLimiter = rateLimit({
 
 module.exports = {
   loginRateLimiter,
+  dummyLoginRateLimiter,
   invoiceRateLimiter,
   syncPushRateLimiter,
   apiRateLimiter

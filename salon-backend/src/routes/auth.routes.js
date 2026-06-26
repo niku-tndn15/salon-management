@@ -3,7 +3,7 @@ const { z } = require('zod');
 const authController = require('../controllers/auth.controller');
 const authenticate = require('../middleware/auth');
 const validate = require('../middleware/validate');
-const { loginRateLimiter } = require('../middleware/rateLimiter');
+const { loginRateLimiter, dummyLoginRateLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -33,6 +33,7 @@ const changePasswordSchema = z.object({
 });
 
 router.post('/login', loginRateLimiter, validate(loginSchema), authController.login);
+router.post('/dummy-login', dummyLoginRateLimiter, authController.dummyLogin);
 router.post('/logout', authenticate, authController.logout);
 router.get('/me', authenticate, authController.me);
 router.post('/change-password', authenticate, validate(changePasswordSchema), authController.changePassword);

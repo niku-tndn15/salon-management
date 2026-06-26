@@ -38,6 +38,13 @@ describe('M2 auth routes', () => {
     expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
   });
 
+  it('returns DB_NOT_CONFIGURED for dummy-login when DATABASE_URL is absent', async () => {
+    const res = await request(app).post('/api/auth/dummy-login');
+
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('DB_NOT_CONFIGURED');
+  });
+
   it('validates weak password changes before hitting the database', async () => {
     const res = await request(app)
       .post('/api/auth/change-password')
