@@ -104,12 +104,8 @@ async function _renderLogin() {
             <div class="login-form__divider"><span>or</span></div>
 
             <button type="button" id="dummy-login" class="btn btn--primary login-form__submit">
-              Dummy login (Owner) · Beta
+              Dummy Login
             </button>
-            <p class="login-form__beta-note">
-              Instant owner access for beta testing — no credentials needed.
-              Your IP address is recorded so we can count testers.
-            </p>
           </div>
 
         </form>
