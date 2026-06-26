@@ -103,7 +103,7 @@ async function _renderLogin() {
           <div id="dummy-login-wrap" hidden>
             <div class="login-form__divider"><span>or</span></div>
 
-            <button type="button" id="dummy-login" class="btn btn--secondary login-form__submit">
+            <button type="button" id="dummy-login" class="btn btn--primary login-form__submit">
               Dummy login (Owner) · Beta
             </button>
             <p class="login-form__beta-note">
